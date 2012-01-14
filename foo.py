@@ -70,6 +70,9 @@ def recvall(s):
 
 from ioloop import socket
 
+import ioloop
+ioloop.log = log
+
 gls = []
 for i in xrange(2):
     s = socket()
@@ -84,7 +87,34 @@ for i in xrange(2):
     s = socket()
     s.connect(("127.0.0.1", 4242))
     gl = greenlet(recvall)
-    gl.switch(s)
+    log.debug("%r %r", i, gl.switch(s))
+
 
 #for i, s, gl in gls:
 #    log.debug("%r %r", i, gl.switch(s))
+
+
+#import time
+#s = pysocket.socket()
+#s.connect(('127.0.0.1', 4242))
+#s.setblocking(0)
+#while True:
+#    try:
+#        print s.recv(1024)
+#    except Exception, e:
+#        import pdb; pdb.set_trace()
+#        log.exception('')
+#    time.sleep(1)
+
+#d = "x" * 40960000
+#import time
+#s = pysocket.socket()
+#s.connect(('127.0.0.1', 4242))
+#s.setblocking(0)
+#while True:
+#    try:
+#        print s.send(d)
+#    except Exception, e:
+#        log.exception('')
+#        import pdb; pdb.set_trace()
+#    time.sleep(1)
