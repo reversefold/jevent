@@ -1,6 +1,5 @@
 import logging
 import random
-import socket
 import sys
 import time
 
@@ -13,8 +12,8 @@ log = logging.getLogger(__name__)
 
 import socket as pysocket
 from greenlet import greenlet
-from jevent.socket import  socket
-
+from jevent import socket
+#import socket
 
 class connection(greenlet):
     def __init__(self, i, c, a):
@@ -35,7 +34,7 @@ class connection(greenlet):
 
 i = 0
 
-s = socket(pysocket.AF_INET, pysocket.SOCK_STREAM)
+s = socket.socket(pysocket.AF_INET, pysocket.SOCK_STREAM)
 s.setsockopt(pysocket.SOL_SOCKET, pysocket.SO_REUSEADDR, 1)
 s.bind(('0.0.0.0', 4242))
 s.listen(10)

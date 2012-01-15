@@ -23,12 +23,15 @@ class ioloop(greenlet):
         self.poll.register(fileno, select.POLLIN)
         self.registered[fileno] = self.registered.get(fileno, 0) | flag
 
-    def unregister(self, fileno, flag):
+    def unregister(self, fileno, flag=None, force=False):
         if fileno not in self.registered:
             return
         log.debug("ioloop.unregister %r %r", fileno, flag)
         r = self.registered[fileno]
-        r &= ~flag
+        if force:
+            r = 0
+        else:
+            r &= ~flag
         if r:
             log.debug("fileno unregistered flag %r %r %r", fileno, flag, r)
             self.poll.modify(fileno, r)
@@ -114,24 +117,30 @@ class ioloop(greenlet):
             for fileno, event in events:
                 log.debug("event %r %r", fileno, event)
 
-                if event & select.POLLIN:
+                # TODO: needed? What does this mean exactly? Should no more events be processed?
+                if event & select.POLLHUP:
+                    log.debug("POLLHUP %r %r", fileno, event)
+                    if fileno in self.to_recv:
+                        del self.to_recv[fileno]
+                    if fileno in self.to_send:
+                        del self.to_send[fileno]
+                    self.unregister(fileno, force=True)
+
+                elif event & select.POLLIN:
                     if fileno in self.to_recv:
                         r = self.to_recv[fileno]
                         self.do_recv(r)
 
-                    else:
+                    elif fileno in self.to_accept:
                         r = self.to_accept[fileno]
                         self.do_accept(r)
+                        
+                    else:
+                        raise Exception("Got event %r for %r but not in to_recv and to_accept" % (event, fileno))
 
                 elif event & select.POLLOUT:
                     r = self.to_send[fileno]
                     self.do_send(r)
-
-                # TODO: needed?
-                #elif event & select.POLLHUP:
-                #    log.debug("POLLHUP %r %r", fileno, event)
-                #    del self.to_recv[fileno]
-                #    del self.to_send[fileno]
 
 #              if fileno == serversocket.fileno():
 #                 connection, address = serversocket.accept()
