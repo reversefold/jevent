@@ -1,6 +1,6 @@
 from greenlet import greenlet
 import logging
-import socket as pysocket
+__socket__ = __import__('socket')
 from jevent import ioloop
 
 log = logging.getLogger(__name__)
@@ -13,7 +13,7 @@ class socket(Proxy):
         if kwargs.get('socket', False):
             self.socket = kwargs['socket']
         else:
-            self.socket = pysocket.socket(*args, **kwargs)
+            self.socket = __socket__.socket(*args, **kwargs)
         super(socket, self).__init__(target=self.socket)
 
     def connect(self, *args, **kwargs):
@@ -47,7 +47,7 @@ class socket(Proxy):
     def shutdown(self, *args, **kwargs):
         try:
             self.socket.shutdown(*args, **kwargs)
-        except pysocket.error, e:
+        except __socket__.error, e:
             if not e.errno == 57:
                 raise
             log.debug("Silencing error due to a FIN from the other side auto-shutting-down the socket")
