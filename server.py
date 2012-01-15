@@ -9,16 +9,6 @@ loggingFormat = '%(asctime)s,%(msecs)03d %(levelname)-5.5s [%(name)s] %(message)
 logging.basicConfig(level=logging.DEBUG, format=loggingFormat, datefmt='%Y-%m-%d %H:%M:%S')
 
 log = logging.getLogger(__name__)
-#log.setLevel(logging.DEBUG)
-#ch = logging.StreamHandler(sys.stdout)
-#ch.setLevel(logging.DEBUG)
-## create formatter and add it to the handlers
-##fmt = '%(asctime)s,%(msecs)03d %(levelname)-5.5s [%(processName)s-%(thread)d-%(threadName)s] [%(name)s] %(message)s (line %(lineno)d %(funcName)s)'
-#fmt = '%(asctime)s,%(msecs)03d %(levelname)-5.5s [%(name)s] %(message)s (line %(lineno)d %(funcName)s)'
-#formatter = logging.Formatter(fmt, datefmt='%Y-%m-%d %H:%M:%S')
-#ch.setFormatter(formatter)
-## add the handlers to the logger
-#log.addHandler(ch)
 
 
 import socket as pysocket
