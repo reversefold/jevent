@@ -16,11 +16,28 @@ ch.setFormatter(formatter)
 # add the handlers to the logger
 log.addHandler(ch)
 
-import ioloop
-ioloop.log = log
 
-from ioloop import socket
 import socket as pysocket
+from greenlet import greenlet
+from jevent.socket import  socket
+
+
+class connection(greenlet):
+    def __init__(self, i, c, a):
+        self.i = i
+        self.c = c
+        self.a = a
+
+    def run(self):
+        log.debug("Accepted connection from %r", self.a)
+    #    c.recv(1)
+    #    time.sleep(10)
+    #    time.sleep(random.randint(0, 10))
+        self.c.send("Hello %r\n" % self.i)
+        log.debug("Sent Hello %r" % self.i)
+        self.c.shutdown(pysocket.SHUT_RDWR)
+        self.c.close()
+        log.debug("Closed connection")
 
 i = 0
 
@@ -30,14 +47,6 @@ s.bind(('0.0.0.0', 4242))
 s.listen(10)
 while True:
     c, a = s.accept()
-    log.debug("Accepted connection from %r", a)
-#    c.recv(1)
-#    time.sleep(10)
-    myi = i
+    g = connection(i, c, a)
+    g.switch()
     i += 1
-#    time.sleep(random.randint(0, 10))
-    c.send("Hello %r\n" % myi)
-    log.debug("Sent Hello %r" % myi)
-    c.shutdown(pysocket.SHUT_RDWR)
-    c.close()
-    log.debug("Closed connection")

@@ -1,75 +1,13 @@
-from greenlet import greenlet
 import logging
-import socket as pysocket
-
-log = logging.getLogger(__name__)
-
-from proxy import Proxy
-
-class socket(Proxy):
-    def __init__(self, *args, **kwargs):
-        log.debug("socket.__init__ %r %r", args, kwargs)
-        if kwargs.get('socket', False):
-            self.socket = kwargs['socket']
-        else:
-            self.socket = pysocket.socket(*args, **kwargs)
-        super(socket, self).__init__(target=self.socket)
-
-    def connect(self, *args, **kwargs):
-        log.debug("socket.connect %r %r", args, kwargs)
-        self.socket.connect(*args, **kwargs)
-        self.socket.setblocking(0)
-
-    def recv(self, *args, **kwargs):
-        log.debug("socket.recv %r %r %r", self.socket.fileno(), args, kwargs)
-        gl = greenlet(loop.mainloop.switch)
-        return gl.switch(('recv', gl, self, args, kwargs))
-
-    def send(self, *args, **kwargs):
-        log.debug("socket.send %r %r %r", self.socket.fileno(), args, kwargs)
-        gl = greenlet(loop.mainloop.switch)
-        return gl.switch(('send', gl, self, args, kwargs))
-
-    def accept(self, *args, **kwargs):
-        log.debug("socket.accept %r %r %r", self.socket.fileno(), args, kwargs)
-        self.socket.setblocking(0)
-        gl = greenlet(loop.mainloop.switch)
-        s, a = gl.switch(('accept', gl, self, args, kwargs))        
-        return socket(socket=s), a 
-
-    def close(self):
-        log.debug("socket.close %r", self.socket.fileno())
-        gl = greenlet(loop.mainloop.switch)
-        gl.switch(('close', gl, self))
-        self.socket.close()
-
-    def shutdown(self, *args, **kwargs):
-        try:
-            self.socket.shutdown(*args, **kwargs)
-        except pysocket.error, e:
-            if not e.errno == 57:
-                raise
-            log.debug("Silencing error due to a FIN from the other side auto-shutting-down the socket")
-
-
 from greenlet import greenlet
 import select
 
+log = logging.getLogger(__name__)
 
-class loop(greenlet):
-    mainloop = None
-    
-#    _singleton = None
-#
-#    @classmethod
-#    def singleton(cls):
-#        if not cls._singleton:
-#            cls._singleton = loop()
-#        return cls._singleton
-
+class ioloop(greenlet):
     def __init__(self):
-        log.debug("loop.__init__")
-        super(loop, self).__init__()
+        log.debug("ioloop.__init__")
+        super(ioloop, self).__init__()
         self.registered = {}
         self.to_recv = {}
         self.to_send = {}
@@ -78,16 +16,17 @@ class loop(greenlet):
 
     def register(self, fileno, flag):
         if fileno == -1:
+            log.error("fileno is -1")
             import pdb;pdb.set_trace()
 
-        log.debug("loop.register %r %r", fileno, flag)
+        log.debug("ioloop.register %r %r", fileno, flag)
         self.poll.register(fileno, select.POLLIN)
         self.registered[fileno] = self.registered.get(fileno, 0) | flag
 
     def unregister(self, fileno, flag):
         if fileno not in self.registered:
             return
-        log.debug("loop.unregister %r %r", fileno, flag)
+        log.debug("ioloop.unregister %r %r", fileno, flag)
         r = self.registered[fileno]
         r &= ~flag
         if r:
@@ -100,7 +39,7 @@ class loop(greenlet):
             del self.registered[fileno]
 
     def socket_recv(self, gl, socket, args, kwargs):
-        log.debug("loop.socket_recv %r %r %r %r %r", gl, socket, socket.fileno(), args, kwargs)
+        log.debug("ioloop.socket_recv %r %r %r %r %r", gl, socket, socket.fileno(), args, kwargs)
         self.to_recv[socket.fileno()] = (gl, socket, args, kwargs)
         self.register(socket.fileno(), select.POLLIN)
 
@@ -118,7 +57,7 @@ class loop(greenlet):
             self.handle_switch(r[0].switch(data))
 
     def socket_send(self, gl, socket, args, kwargs):
-        log.debug("loop.socket_send %r %r %r %r %r", gl, socket, socket.fileno(), args, kwargs)
+        log.debug("ioloop.socket_send %r %r %r %r %r", gl, socket, socket.fileno(), args, kwargs)
         r = (gl, socket, args, kwargs)
         if not self.do_send(r):
             self.to_send[socket.fileno()] = r
@@ -138,14 +77,14 @@ class loop(greenlet):
             self.handle_switch(r[0].switch(ret))
 
     def socket_close(self, gl, socket):
-        log.debug("loop.socket_close %r %r %r", gl, socket, socket.fileno())
+        log.debug("ioloop.socket_close %r %r %r", gl, socket, socket.fileno())
 #        self.poll.unregister(socket.fileno())
         if socket.fileno() in self.to_recv:
             del self.to_recv[socket.fileno()]
         self.handle_switch(gl.switch())
 
     def socket_accept(self, gl, socket, args, kwargs):
-        log.debug("loop.accept %r %r %r %r %r", gl, socket, socket.fileno(), args, kwargs)
+        log.debug("ioloop.accept %r %r %r %r %r", gl, socket, socket.fileno(), args, kwargs)
         self.to_accept[socket.fileno()] = (gl, socket, args, kwargs)
         self.register(socket.fileno(), select.POLLIN)
 
@@ -156,12 +95,12 @@ class loop(greenlet):
         self.handle_switch(r[0].switch(data))
 
     def handle_switch(self, rec):
-        log.debug("loop.handle_switch %r", rec)
+        log.debug("ioloop.handle_switch %r", rec)
         # switch on type
         getattr(self, 'socket_' + rec[0])(*rec[1:])
 
     def run(self):
-        log.debug("loop.run")
+        log.debug("ioloop.run")
         self.handle_switch(self.parent.switch())
         while True:
             # TODO: is this needed?
@@ -217,5 +156,5 @@ class loop(greenlet):
 #                 connections[fileno].close()
 #                 del connections[fileno]
 
-loop.mainloop = loop()
-loop.mainloop.switch()
+coreloop = ioloop()
+coreloop.switch()

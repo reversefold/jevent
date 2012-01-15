@@ -68,10 +68,8 @@ def recvall(s):
     s.close()
     return b''.join(data)
 
-from ioloop import socket
-
-import ioloop
-ioloop.log = log
+from jevent import ioloop
+from jevent.socket import socket
 
 gls = []
 for i in xrange(2):
@@ -89,10 +87,8 @@ for i in xrange(2):
     gl = greenlet(recvall)
     log.debug("%r %r", i, gl.switch(s))
 
-
 #for i, s, gl in gls:
 #    log.debug("%r %r", i, gl.switch(s))
-
 
 #import time
 #s = pysocket.socket()
