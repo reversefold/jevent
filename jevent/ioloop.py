@@ -1,6 +1,7 @@
 import logging
 from greenlet import greenlet
 import select
+pysocket = __import__('socket')
 
 log = logging.getLogger(__name__)
 
@@ -46,8 +47,10 @@ class ioloop(greenlet):
 
     def socket_recv(self, gl, socket, args, kwargs):
         log.debug("ioloop.socket_recv %r %r %r %r %r", gl, socket, socket.fileno(), args, kwargs)
-        self.to_recv[socket.fileno()] = (gl, socket, args, kwargs)
-        self.register(socket.fileno(), select.POLLIN)
+        r = (gl, socket, args, kwargs)
+        if not self.do_recv(r):
+            self.to_recv[socket.fileno()] = r
+            self.register(socket.fileno(), select.POLLIN)
 
     def do_recv(self, r):
         log.debug("do_recv %r", r)
@@ -56,7 +59,7 @@ class ioloop(greenlet):
 
         except pysocket.error, e:
             if e.errno == 35: #Resource temporarily unavailable
-                log.debug("Asynchronous socket has no readable data %r %r %r %r", fileno, event, r, e)
+                log.debug("Asynchronous socket has no readable data %r %r", r, e)
             else:
                 self.handle_switch(r[0].throw(*sys.exc_info()))
 
@@ -70,6 +73,9 @@ class ioloop(greenlet):
             self.unregister(r[1].fileno(), select.POLLIN)
             log.info("recv, Switching to %r with %r", r, data)
             self.handle_switch(r[0].switch(data))
+            return True
+
+        return False
 
     def socket_send(self, gl, socket, args, kwargs):
         log.debug("ioloop.socket_send %r %r %r %r %r", gl, socket, socket.fileno(), args, kwargs)
@@ -99,6 +105,10 @@ class ioloop(greenlet):
                 del self.to_send[r[1].fileno()]
             self.unregister(r[1].fileno(), select.POLLOUT)
             self.handle_switch(r[0].switch(ret))
+            return True
+
+        return False
+
 
     def socket_close(self, gl, socket):
         log.debug("ioloop.socket_close %r %r %r", gl, socket, socket.fileno())
@@ -113,8 +123,10 @@ class ioloop(greenlet):
 
     def socket_accept(self, gl, socket, args, kwargs):
         log.debug("ioloop.accept %r %r %r %r %r", gl, socket, socket.fileno(), args, kwargs)
-        self.to_accept[socket.fileno()] = (gl, socket, args, kwargs)
-        self.register(socket.fileno(), select.POLLIN)
+        r = (gl, socket, args, kwargs)
+        if not self.do_accept(r):
+            self.to_accept[socket.fileno()] = r
+            self.register(socket.fileno(), select.POLLIN)
 
     def do_accept(self, r):
         log.debug("do_accept %r", r)
@@ -131,12 +143,15 @@ class ioloop(greenlet):
              self.handle_switch(r[0].throw(*sys.exc_info()))
 
         else:
-             log.debug(" data %r %r", data, r)
-             if r[1].fileno() in self.to_accept:
-                 del self.to_accept[r[1].fileno()]
-             self.unregister(r[1].fileno(), select.POLLIN)
-             log.info("accept, Switching to %r with %r", r, data)
-             self.handle_switch(r[0].switch(data))
+            log.debug(" data %r %r", data, r)
+            if r[1].fileno() in self.to_accept:
+                del self.to_accept[r[1].fileno()]
+            self.unregister(r[1].fileno(), select.POLLIN)
+            log.info("accept, Switching to %r with %r", r, data)
+            self.handle_switch(r[0].switch(data))
+            return True
+
+        return False
 
     def handle_switch(self, rec):
         log.debug("ioloop.handle_switch %r", rec)
