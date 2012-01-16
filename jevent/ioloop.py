@@ -8,25 +8,28 @@ class ioloop(greenlet):
     def __init__(self):
         log.debug("ioloop.__init__")
         super(ioloop, self).__init__()
+
         self.registered = {}
         self.to_recv = {}
         self.to_send = {}
         self.to_accept = {}
+
         self.poll = select.poll()
 
     def register(self, fileno, flag):
-        if fileno == -1:
-            log.error("fileno is -1")
-            import pdb;pdb.set_trace()
-
         log.debug("ioloop.register %r %r", fileno, flag)
+#        if fileno == -1:
+#            log.error("fileno is -1")
+#            import pdb;pdb.set_trace()
+
         self.poll.register(fileno, select.POLLIN)
         self.registered[fileno] = self.registered.get(fileno, 0) | flag
 
     def unregister(self, fileno, flag=None, force=False):
-        if fileno not in self.registered:
-            return
         log.debug("ioloop.unregister %r %r", fileno, flag)
+        if fileno not in self.registered:
+            log.debug("fileno not registered previously %r %r", fileno, flag)
+            return
         r = self.registered[fileno]
         if force:
             r = 0
@@ -47,16 +50,25 @@ class ioloop(greenlet):
         self.register(socket.fileno(), select.POLLIN)
 
     def do_recv(self, r):
+        log.debug("do_recv %r", r)
         try:
             data = r[1].socket.recv(*r[2], **r[3])
+
         except pysocket.error, e:
             if e.errno == 35: #Resource temporarily unavailable
                 log.debug("Asynchronous socket has no readable data %r %r %r %r", fileno, event, r, e)
             else:
-                raise
+                self.handle_switch(r[0].throw(*sys.exc_info()))
+
+        except:
+            self.handle_switch(r[0].throw(*sys.exc_info()))             
+
         else:
-            log.debug("do_recv %r %r", data, r)
+            log.debug(" data %r %r", r, data)
+            if r[1].fileno() in self.to_recv:
+                del self.to_recv[r[1].fileno()]
             self.unregister(r[1].fileno(), select.POLLIN)
+            log.info("recv, Switching to %r with %r", r, data)
             self.handle_switch(r[0].switch(data))
 
     def socket_send(self, gl, socket, args, kwargs):
@@ -67,23 +79,36 @@ class ioloop(greenlet):
             self.register(socket.fileno(), select.POLLOUT)
 
     def do_send(self, r):
+        log.debug("do_send %r", r)
         try:
             ret = r[1].socket.send(*r[2], **r[3])
+
         except pysocket.error, e:
             if e.errno == 35: #Resource temporarily unavailable
                 log.debug("Asynchronous socket is not ready to send data %r %r", r, e)
             else:
-                raise
+                self.handle_switch(r[0].throw(*sys.exc_info()))
+
+        except:
+            self.handle_switch(r[0].throw(*sys.exc_info()))             
+
         else:
-            log.debug("do_send %r %r", ret, r)
+            log.debug(" return %r %r", ret, r)
+            log.info("send, Switching to %r with %r", r, ret)
+            if r[1].fileno() in self.to_send:
+                del self.to_send[r[1].fileno()]
             self.unregister(r[1].fileno(), select.POLLOUT)
             self.handle_switch(r[0].switch(ret))
 
     def socket_close(self, gl, socket):
         log.debug("ioloop.socket_close %r %r %r", gl, socket, socket.fileno())
-#        self.poll.unregister(socket.fileno())
         if socket.fileno() in self.to_recv:
             del self.to_recv[socket.fileno()]
+        if socket.fileno() in self.to_send:
+            del self.to_send[socket.fileno()]
+        if socket.fileno() in self.to_accept:
+            del self.to_accept[socket.fileno()]
+        self.unregister(socket.fileno(), force=True)
         self.handle_switch(gl.switch())
 
     def socket_accept(self, gl, socket, args, kwargs):
@@ -92,10 +117,26 @@ class ioloop(greenlet):
         self.register(socket.fileno(), select.POLLIN)
 
     def do_accept(self, r):
-        data = r[1].socket.accept(*r[2], **r[3])
-        log.debug("do_accept %r %r", data, r)
-#        self.unregister(r[1].fileno(), select.POLLIN)
-        self.handle_switch(r[0].switch(data))
+        log.debug("do_accept %r", r)
+        try:
+             data = r[1].socket.accept(*r[2], **r[3])
+
+        except pysocket.error, e:
+            if e.errno == 35: #Resource temporarily unavailable
+                log.debug("Asynchronous socket is not ready to accept %r %r", r, e)
+            else:
+                self.handle_switch(r[0].throw(*sys.exc_info()))
+
+        except:
+             self.handle_switch(r[0].throw(*sys.exc_info()))
+
+        else:
+             log.debug(" data %r %r", data, r)
+             if r[1].fileno() in self.to_accept:
+                 del self.to_accept[r[1].fileno()]
+             self.unregister(r[1].fileno(), select.POLLIN)
+             log.info("accept, Switching to %r with %r", r, data)
+             self.handle_switch(r[0].switch(data))
 
     def handle_switch(self, rec):
         log.debug("ioloop.handle_switch %r", rec)
@@ -124,6 +165,8 @@ class ioloop(greenlet):
                         del self.to_recv[fileno]
                     if fileno in self.to_send:
                         del self.to_send[fileno]
+                    if fileno in self.to_accept:
+                        del self.to_accept[fileno]
                     self.unregister(fileno, force=True)
 
                 elif event & select.POLLIN:
@@ -134,13 +177,17 @@ class ioloop(greenlet):
                     elif fileno in self.to_accept:
                         r = self.to_accept[fileno]
                         self.do_accept(r)
-                        
+
                     else:
-                        raise Exception("Got event %r for %r but not in to_recv and to_accept" % (event, fileno))
+                        log.info("Received POLLIN for unregistered fd %r, ignoring", fileno)
+                        #raise Exception("Got event %r for %r but not in to_recv and to_accept" % (event, fileno))
 
                 elif event & select.POLLOUT:
-                    r = self.to_send[fileno]
-                    self.do_send(r)
+                    if fileno in self.to_send:
+                        r = self.to_send[fileno]
+                        self.do_send(r)
+                    else:
+                        log.info("Received POLLOUT for unregistered fd %r, ignoring", fileno)
 
 #              if fileno == serversocket.fileno():
 #                 connection, address = serversocket.accept()
