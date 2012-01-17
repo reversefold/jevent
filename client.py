@@ -18,7 +18,7 @@ def join(gr):
     return ret
 
 def recvall(s):
-    sendall(s, "x" * random.randint(0, 5) + "\n")
+    sendall(s, "x" * random.randint(0, 1024) * 1024 + "\n")
     data = []
     while True:
         n = s.recv(1024)
@@ -39,7 +39,7 @@ def sendall(s, data):
 def main():
     #loggingFormat = '%(asctime)s,%(msecs)03d %(levelname)-5.5s [%(processName)s-%(thread)d-%(threadName)s] [%(name)s] %(message)s (line %(lineno)d %(funcName)s)'
     loggingFormat = '%(asctime)s,%(msecs)03d %(levelname)-5.5s [%(name)s] %(message)s (line %(lineno)d %(funcName)s)'
-    logging.basicConfig(level=logging.DEBUG, format=loggingFormat, datefmt='%Y-%m-%d %H:%M:%S')
+    logging.basicConfig(level=logging.INFO, format=loggingFormat, datefmt='%Y-%m-%d %H:%M:%S')
     
     gls = []
     for i in xrange(2):
