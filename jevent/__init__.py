@@ -1,0 +1,2 @@
+class JEventException(Exception):
+    pass
