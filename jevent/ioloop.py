@@ -100,7 +100,7 @@ class ioloop(greenlet):
                 self._schedule_call(r['greenlet'].throw(*sys.exc_info()))
 
         except:
-            self._schedule_call(r['greenlet'].throw(*sys.exc_info()))             
+            self._schedule_call(r['greenlet'].throw(*sys.exc_info()))
 
         else:
             log.debug(" return %r %r", ret, r)
