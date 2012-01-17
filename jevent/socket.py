@@ -1,5 +1,6 @@
 import greenlet
 import logging
+import select
 __socket__ = __import__('socket')
 from jevent import ioloop
 
@@ -28,31 +29,52 @@ class socket(Proxy):
         self.socket.setblocking(0)
         # TODO: no async here?
 
+    def _do_operation(self, operation, flag, args, kwargs):
+        #self._check_fileno()
+        try:
+            ret = getattr(self.socket, operation)(*args, **kwargs)
+
+        except __socket__.error, e:
+            if e.errno != 35: #Resource temporarily unavailable
+                raise
+            log.debug("Asynchronous socket is not ready for %r %r %r", operation, self, e)
+            ioloop.coreloop.register(
+                { 'greenlet': greenlet.getcurrent(),
+                  'socket': self,
+                  'args': args,
+                  'kwargs': kwargs },
+                flag,
+                operation)
+            try:
+                ret = ioloop.coreloop.switch()
+            finally:
+                ioloop.coreloop.unregister(self.fileno(), flag, operation)
+
+        log.debug(" return %r %r", ret, self)
+        return ret
+
     def recv(self, *args, **kwargs):
         log.debug("socket.recv %r %r %r", self.socket.fileno(), args, kwargs)
-        #self._check_fileno()
-        return ioloop.coreloop.switch(('recv', greenlet.getcurrent(), self, args, kwargs))
+        return self._do_operation('recv', select.POLLIN, args, kwargs)
 
     def send(self, *args, **kwargs):
         log.debug("socket.send %r %r %r", self.socket.fileno(), args, kwargs)
-        #self._check_fileno()
-        return ioloop.coreloop.switch(('send', greenlet.getcurrent(), self, args, kwargs))
+        return self._do_operation('send', select.POLLOUT, args, kwargs)
 
     def accept(self, *args, **kwargs):
         log.debug("socket.accept %r %r %r", self.socket.fileno(), args, kwargs)
-        #self._check_fileno()
         self.socket.setblocking(0)
-        s, a = ioloop.coreloop.switch(('accept', greenlet.getcurrent(), self, args, kwargs))        
+        s, a = self._do_operation('accept', select.POLLIN, args, kwargs)
         return socket(socket=s), a 
 
-    def close(self):
-        log.debug("socket.close %r", self.socket.fileno())
-        #self._check_fileno()
-        ioloop.coreloop.switch(('close', greenlet.getcurrent(), self))
-        self.socket.close()
+#    def close(self):
+#        log.debug("socket.close %r", self.socket.fileno())
+#        #self._check_fileno()
+#        ioloop.coreloop.unregister(self.fileno(), force=True)
+#        self.socket.close()
 
     def shutdown(self, *args, **kwargs):
-        log.debug("socket.fileno %r", self.socket.fileno())
+        log.debug("socket.shutdown %r", self.socket.fileno())
         #self._check_fileno()
         try:
             self.socket.shutdown(*args, **kwargs)

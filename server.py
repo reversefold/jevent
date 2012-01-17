@@ -8,7 +8,7 @@ log = logging.getLogger(__name__)
 
 import socket as pysocket
 from greenlet import greenlet
-from jevent import socket
+from jevent import ioloop, socket
 #import socket
 
 class connection(greenlet):
@@ -44,6 +44,8 @@ def main():
     s.bind(('0.0.0.0', 4242))
     s.listen(10)
     while True:
+        ioloop.coreloop.switch()
+        log.info("accept()")
         c, a = s.accept()
         g = connection(i, c, a)
         g.switch()

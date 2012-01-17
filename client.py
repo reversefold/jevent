@@ -17,8 +17,11 @@ def join(gr):
             break
     return ret
 
-def recvall(s):
-    sendall(s, "x" * random.randint(0, 1024) * 1024 + "\n")
+def recvall(s, i):
+#    num = random.randint(0, 1) * 10240000
+    num = (9 - i) * 1024000
+#    num = 1
+    sendall(s, "x" * num + "\n")
     data = []
     while True:
         n = s.recv(1024)
@@ -29,7 +32,7 @@ def recvall(s):
         data.append(n)
     s.shutdown(pysocket.SHUT_RDWR)
     s.close()
-    return b''.join(data)
+    log.info("%r %r", i, b''.join(data))
 
 def sendall(s, data):
     log.info("Sending %r bytes", len(data))
@@ -42,20 +45,34 @@ def main():
     logging.basicConfig(level=logging.INFO, format=loggingFormat, datefmt='%Y-%m-%d %H:%M:%S')
     
     gls = []
-    for i in xrange(2):
+    for i in xrange(10):
         s = socket()
         s.connect(("127.0.0.1", 4242))
         gl = greenlet(recvall)
         gls.append((i, s, gl))
+        gl.switch(s, i)
     
-    for i in xrange(2):
-        log.info("%r %r", i, gls[i][2].switch(gls[i][1]))
+#    for i in xrange(10):
+#        log.info("%r %r", i, gls[i][2].switch(gls[i][1], i))
     
-    for i in xrange(2):
-        s = socket()
-        s.connect(("127.0.0.1", 4242))
-        gl = greenlet(recvall)
-        log.info("%r %r", i, gl.switch(s))
+#    while gls:
+#        for i, s, gl in gls:
+#            if gl.dead:
+#                gls.remove((i, s, gl))
+#            ioloop.coreloop.switch()
+#
+#    for i in xrange(4):
+#        s = socket()
+#        s.connect(("127.0.0.1", 4242))
+#        gl = greenlet(recvall)
+#        gls.append((i, s, gl))
+#        log.info("%r %r", i, gl.switch(s, i))
+
+    while gls:
+        for i, s, gl in gls:
+            if gl.dead:
+                gls.remove((i, s, gl))
+            ioloop.coreloop.switch()
     
     #for i, s, gl in gls:
     #    log.debug("%r %r", i, gl.switch(s))
