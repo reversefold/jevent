@@ -35,6 +35,8 @@ class socket(Proxy):
 
     def _do_operation(self, operation, flag, args, kwargs):
         #self._check_fileno()
+#        if ioloop.IDLE:
+#            ioloop.coreloop.switch()
         try:
             ret = getattr(self.socket, operation)(*args, **kwargs)
 
@@ -86,7 +88,7 @@ class socket(Proxy):
 
     def sendall(self, data):
         # TODO: use self.socket.sendall?
-        log.info("Sending %r bytes", len(data))
+        log.debug("Sending %r bytes", len(data))
         while data:
             data = data[self.send(data):]
             log.debug("%r remaining", len(data))

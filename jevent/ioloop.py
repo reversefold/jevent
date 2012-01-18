@@ -1,7 +1,7 @@
 import logging
 from greenlet import greenlet
 import select
-pysocket = __import__('socket')
+__socket__ = __import__('socket')
 import sys
 
 from jevent import JEventException
@@ -11,7 +11,7 @@ log = logging.getLogger(__name__)
 noop = object()
 
 IDLE = True
-IDLE_WAIT = 100 if IDLE else None
+IDLE_WAIT = 10 if IDLE else None
 
 
 def lim(s, l=50):
@@ -104,7 +104,7 @@ class ioloop(greenlet):
 #        try:
 #            ret = getattr(r['socket'].socket, operation)(*r['args'], **r['kwargs'])
 #
-#        except pysocket.error, e:
+#        except __socket__.error, e:
 #            if e.errno == 35: #Resource temporarily unavailable
 #                log.debug("Asynchronous socket is not ready for operation %r %r %r", operation, r, e)
 #            else:
@@ -185,7 +185,7 @@ class ioloop(greenlet):
 #                        self.do_accept(r)
 
                     else:
-                        log.info("Received POLLIN for unregistered fd %r, ignoring", fileno)
+                        log.warn("Received POLLIN for unregistered fd %r, ignoring", fileno)
                         #raise Exception("Got event %r for %r but not in to_recv and to_accept" % (event, fileno))
 
                 if event & select.POLLOUT:
@@ -194,10 +194,12 @@ class ioloop(greenlet):
                         r['greenlet'].switch(r['socket'].socket.send(*r['args'], **r['kwargs']))
 #                        self.do_send(r)
                     else:
-                        log.info("Received POLLOUT for unregistered fd %r, ignoring", fileno)
+                        log.warn("Received POLLOUT for unregistered fd %r, ignoring", fileno)
 
                 if event & select.POLLHUP:
                     log.debug("POLLHUP %r %r", fileno, event)
+                    for operation, r in self.registered[fileno]['operations'].iteritems():
+                        r['greenlet'].throw(__socket__.error("Connection closed"))
                     #self.unregister(fileno, force=True)
 #            else:
 #                # no events to process, let the parent greenlet run
