@@ -3,6 +3,7 @@ import logging
 import random
 import sys
 import socket as pysocket
+import time
 
 from jevent import ioloop
 from jevent.socket import socket
@@ -19,9 +20,11 @@ def join(gr):
 
 def recvall(s, i):
 #    num = random.randint(0, 1) * 10240000
-    num = (9 - i) * 1024000
-#    num = 1
-    sendall(s, "x" * num + "\n")
+#    num = (9 - i) * 1024000
+    num = 1
+#    num = 1024 * 1024
+    log.info("recvall %r %r", s, i)
+    s.sendall("x" * num + "\n")
     data = []
     while True:
         n = s.recv(1024)
@@ -34,15 +37,10 @@ def recvall(s, i):
     s.close()
     log.info("%r %r", i, b''.join(data))
 
-def sendall(s, data):
-    log.info("Sending %r bytes", len(data))
-    while data:
-        data = data[s.send(data):]
-
 def main():
     #loggingFormat = '%(asctime)s,%(msecs)03d %(levelname)-5.5s [%(processName)s-%(thread)d-%(threadName)s] [%(name)s] %(message)s (line %(lineno)d %(funcName)s)'
     loggingFormat = '%(asctime)s,%(msecs)03d %(levelname)-5.5s [%(name)s] %(message)s (line %(lineno)d %(funcName)s)'
-    logging.basicConfig(level=logging.INFO, format=loggingFormat, datefmt='%Y-%m-%d %H:%M:%S')
+    logging.basicConfig(level=logging.DEBUG, format=loggingFormat, datefmt='%Y-%m-%d %H:%M:%S')
     
     gls = []
     for i in xrange(10):
@@ -72,7 +70,8 @@ def main():
         for i, s, gl in gls:
             if gl.dead:
                 gls.remove((i, s, gl))
-            ioloop.coreloop.switch()
+            if ioloop.IDLE:
+                ioloop.coreloop.switch()
     
     #for i, s, gl in gls:
     #    log.debug("%r %r", i, gl.switch(s))

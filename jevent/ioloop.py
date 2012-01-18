@@ -8,6 +8,16 @@ from jevent import JEventException
 
 log = logging.getLogger(__name__)
 
+noop = object()
+
+IDLE = True
+IDLE_WAIT = 100 if IDLE else None
+
+
+def lim(s, l=50):
+    ss = str(s)
+    return s if len(ss) < l else (ss[:l] + '...')
+
 class ioloop(greenlet):
     def __init__(self):
         log.debug("ioloop.__init__")
@@ -25,6 +35,7 @@ class ioloop(greenlet):
 #            import pdb;pdb.set_trace()
 
         if fileno in self.registered:
+            # TODO: given the way this is meant to be used could one socket really be registered for multiple operations?
             if operation in self.registered[fileno]['operations']:
                 raise JEventException("%r already registered for operation %r %r" % (fileno, operation, flag))
 
@@ -52,7 +63,7 @@ class ioloop(greenlet):
             r &= ~flag
 
         if r:
-            log.debug("fileno unregistered flag %r %r %r", fileno, flag, r)
+            log.debug("fileno unregistered flag %r %r %r", fileno, flag, lim(r))
             self.poll.modify(fileno, r)
             self.registered[fileno]['flags'] = r
             del self.registered[fileno]['operations'][operation]
@@ -146,13 +157,13 @@ class ioloop(greenlet):
 #            for rec in self.calls_to_process:
 #                self._process_call(rec)
 
-            if not self.registered:
+            if IDLE and not self.registered:
                 log.debug("nothing to poll, switching to parent")
-                self.parent.switch()
+                self.parent.switch(noop)
                 continue
 
             log.debug("polling")
-            events = self.poll.poll()
+            events = self.poll.poll(IDLE_WAIT)
             for fileno, event in events:
                 log.debug("event %r %r", fileno, event)
 
@@ -192,7 +203,8 @@ class ioloop(greenlet):
 #                # no events to process, let the parent greenlet run
 #                self.parent.switch()
 #            log.info("switch() to parent from ioloop")
-            self.parent.switch()
+            if IDLE:
+                self.parent.switch(noop)
 
 coreloop = ioloop()
 coreloop.switch()

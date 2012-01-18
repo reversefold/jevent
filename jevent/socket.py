@@ -8,6 +8,10 @@ log = logging.getLogger(__name__)
 
 from proxy import Proxy
 
+def lim(s, l=50):
+    ss = str(s)
+    return s if len(ss) < l else (ss[:l] + '...')
+
 class socket(Proxy):
     def __init__(self, *args, **kwargs):
         log.debug("socket.__init__ %r %r", args, kwargs)
@@ -45,20 +49,33 @@ class socket(Proxy):
                   'kwargs': kwargs },
                 flag,
                 operation)
+
             try:
-                ret = ioloop.coreloop.switch()
+                ## TODO: don't really like this
+                while True:
+                #    try:
+                #        ret = getattr(self.socket, operation)(*args, **kwargs)
+                #    except __socket__.error, e:
+                #        if e.errno != 35: #Resource temporarily unavailable
+                #            raise
+                #        log.debug("Asynchronous socket is not ready for %r %r %r", operation, self, e)
+                    ret = ioloop.coreloop.switch()
+                    if ioloop.IDLE and ret is ioloop.noop:
+                        log.debug("noop")
+                        continue
+                    break
             finally:
                 ioloop.coreloop.unregister(self.fileno(), flag, operation)
 
-        log.debug(" return %r %r", ret, self)
+        log.debug(" return %r %r", lim(ret), self)
         return ret
 
     def recv(self, *args, **kwargs):
-        log.debug("socket.recv %r %r %r", self.socket.fileno(), args, kwargs)
+        log.debug("socket.recv %r %r %r", self.socket.fileno(), lim(args), lim(kwargs))
         return self._do_operation('recv', select.POLLIN, args, kwargs)
 
     def send(self, *args, **kwargs):
-        log.debug("socket.send %r %r %r", self.socket.fileno(), args, kwargs)
+        log.debug("socket.send %r %r %r", self.socket.fileno(), lim(args), lim(kwargs))
         return self._do_operation('send', select.POLLOUT, args, kwargs)
 
     def accept(self, *args, **kwargs):
@@ -66,6 +83,14 @@ class socket(Proxy):
         self.socket.setblocking(0)
         s, a = self._do_operation('accept', select.POLLIN, args, kwargs)
         return socket(socket=s), a 
+
+    def sendall(self, data):
+        # TODO: use self.socket.sendall?
+        log.info("Sending %r bytes", len(data))
+        while data:
+            data = data[self.send(data):]
+            log.debug("%r remaining", len(data))
+            #time.sleep(0.1)
 
 #    def close(self):
 #        log.debug("socket.close %r", self.socket.fileno())
