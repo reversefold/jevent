@@ -19,6 +19,12 @@ class connection(greenlet):
 
     def run(self):
         log.info("Accepted connection from %r", self.a)
+#        self.c.setblocking(0)
+#        try:
+#            self.c.recv(1024)
+#        except:
+#            log.error(sys.exc_info())
+#        self.c.setblocking(1)
     #    c.recv(1)
     #    time.sleep(10)
     #    time.sleep(random.randint(0, 10))

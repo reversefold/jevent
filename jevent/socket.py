@@ -1,4 +1,5 @@
 import greenlet
+import inspect
 import logging
 import select
 __socket__ = __import__('socket')
@@ -19,6 +20,7 @@ class socket(Proxy):
             self.socket = kwargs['socket']
         else:
             self.socket = __socket__.socket(*args, **kwargs)
+        self._blocking = 1
         super(socket, self).__init__(target=self.socket)
 
     def _check_fileno(self):
@@ -102,5 +104,15 @@ class socket(Proxy):
                 raise
             log.debug("Silencing error due to a FIN from the other side auto-shutting-down the socket")
 
-    def setblocking(self, *args, **kwargs):
-        raise Exception("This is a non-blocking implementation of a blocking socket, you can't setblocking on me")
+    def setblocking(self, block):
+        if self._blocking == block:
+            return
+        self._blocking = block
+        for name, method in inspect.getmembers(self, inspect.ismethod):
+            if name == 'setblocking' or name.startswith('_'):
+                continue
+            if self._blocking:
+                setattr(self, name, getattr(self, '_orig_' + name))
+            else:
+                setattr(self, '_orig_' + name, getattr(self, name))
+                setattr(self, name, getattr(self.socket, name))
