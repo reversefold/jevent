@@ -10,7 +10,7 @@ from proxy import Proxy
 
 def lim(s, l=50):
     ss = str(s)
-    return s if len(ss) < l else (ss[:l] + '...')
+    return s if len(ss) < l else (ss[:l / 2] + '...' + ss[-l / 2:])
 
 class socket(Proxy):
     def __init__(self, *args, **kwargs):

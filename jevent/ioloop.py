@@ -16,7 +16,7 @@ IDLE_WAIT = 500 if IDLE else None
 
 def lim(s, l=50):
     ss = str(s)
-    return s if len(ss) < l else (ss[:l] + '...')
+    return s if len(ss) < l else (ss[:l / 2] + '...' + ss[-l / 2:])
 
 class ioloop(greenlet):
     def __init__(self):
