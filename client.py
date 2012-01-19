@@ -1,3 +1,5 @@
+# Copyright: (c) 2012 Justin Patrin <papercrane@reversefold.com>
+
 from greenlet import greenlet, GreenletExit
 import logging
 import random

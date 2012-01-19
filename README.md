@@ -1,0 +1,1 @@
+A library for using asynchronous network i/o while programming like it's synchronous i/o, written in pure python. Inspired by gevent.

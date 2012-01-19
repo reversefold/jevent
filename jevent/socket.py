@@ -1,3 +1,5 @@
+# Copyright: (c) 2012 Justin Patrin <papercrane@reversefold.com>
+
 import greenlet
 import inspect
 import logging
