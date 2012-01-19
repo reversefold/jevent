@@ -14,7 +14,7 @@ def run_server():
     server.main()
 
 def main_greenlets():
-    from greenlet import greenlet
+    from greenlet import greenlet, GreenletExit
 
     s = greenlet(run_server)
     c = greenlet(run_client)
@@ -25,21 +25,30 @@ def main_greenlets():
     while not s.dead:
         if c.dead:
             log.info("Client dead, exiting")
-            sys.exit(0)
+            s.throw(GreenletExit())
+            break
         c.switch()
         s.switch()
 
 def main_threads():
-    from threading import Thread
+    import threading
 
-    s = Thread(target=run_server)
-    c = Thread(target=run_client)
+    s = threading.Thread(target=run_server)
+    c = threading.Thread(target=run_client)
     s.start()
     log.info("Server started")
     c.start()
     log.info("Client started")
     c.join()
     log.info("Client done")
+    import time
+    time.sleep(1)
+    log.info("Sleep done")
+    import ctypes
+    for tid, tobj in threading._active.items():
+        if tobj is s:
+            break
+    ctypes.pythonapi.PyThreadState_SetAsyncExc(tid, ctypes.pyobject(Exception))
     s.join()
     log.info("Server done")
 

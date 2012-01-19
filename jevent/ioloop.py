@@ -13,7 +13,7 @@ log = logging.getLogger(__name__)
 noop = object()
 
 IDLE = True
-IDLE_WAIT = 500 if IDLE else None
+IDLE_WAIT = 100 if IDLE else None
 
 
 def lim(s, l=50):
