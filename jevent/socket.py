@@ -92,12 +92,6 @@ class socket(Proxy):
             log.debug("%r remaining", len(data))
             #time.sleep(0.1)
 
-#    def close(self):
-#        log.debug("socket.close %r", self.socket.fileno())
-#        #self._check_fileno()
-#        ioloop.coreloop.unregister(self.fileno(), force=True)
-#        self.socket.close()
-
     def shutdown(self, *args, **kwargs):
         log.debug("socket.shutdown %r", self.socket.fileno())
         #self._check_fileno()
