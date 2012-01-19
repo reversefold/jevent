@@ -37,37 +37,41 @@ class socket(Proxy):
         #self._check_fileno()
 #        if ioloop.IDLE:
 #            ioloop.coreloop.switch()
-        try:
-            ret = getattr(self.socket, operation)(*args, **kwargs)
 
-        except __socket__.error, e:
-            if e.errno != 35: #Resource temporarily unavailable
-                raise
-            log.debug("Asynchronous socket is not ready for %r %r %r", operation, self, e)
-            ioloop.coreloop.register(
-                { 'greenlet': greenlet.getcurrent(),
-                  'socket': self,
-                  'args': args,
-                  'kwargs': kwargs },
-                flag,
-                operation)
-
+        # loop until we get a response from the operation
+        while True:
             try:
-                ## TODO: don't really like this
-                while True:
-                #    try:
-                #        ret = getattr(self.socket, operation)(*args, **kwargs)
-                #    except __socket__.error, e:
-                #        if e.errno != 35: #Resource temporarily unavailable
-                #            raise
-                #        log.debug("Asynchronous socket is not ready for %r %r %r", operation, self, e)
-                    ret = ioloop.coreloop.switch()
-                    if ioloop.IDLE and ret is ioloop.noop:
-                        log.debug("noop")
-                        continue
-                    break
-            finally:
-                ioloop.coreloop.unregister(self.fileno(), flag, operation)
+                ret = getattr(self.socket, operation)(*args, **kwargs)
+                break
+            except __socket__.error, e:
+                if e.errno != 35: #Resource temporarily unavailable
+                    raise
+                log.debug("Asynchronous socket is not ready for %r %r %r", operation, self, e)
+                ioloop.coreloop.register(
+                    { 'greenlet': greenlet.getcurrent(),
+                      'socket': self,
+                      'args': args,
+                      'kwargs': kwargs },
+                    flag,
+                    operation)
+    
+                try:
+                    ## TODO: don't really like this
+                    # loop until we don't get a noop (which means we should be ready for our operation)
+                    while True:
+                    #    try:
+                    #        ret = getattr(self.socket, operation)(*args, **kwargs)
+                    #    except __socket__.error, e:
+                    #        if e.errno != 35: #Resource temporarily unavailable
+                    #            raise
+                    #        log.debug("Asynchronous socket is not ready for %r %r %r", operation, self, e)
+                        ret = ioloop.coreloop.switch()
+                        if ioloop.IDLE and ret is ioloop.noop:
+                            log.debug("noop")
+                            continue
+                        break
+                finally:
+                    ioloop.coreloop.unregister(self.fileno(), flag, operation)
 
         log.debug(" return %r %r", lim(ret), self)
         return ret

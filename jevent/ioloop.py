@@ -11,7 +11,7 @@ log = logging.getLogger(__name__)
 noop = object()
 
 IDLE = True
-IDLE_WAIT = 10 if IDLE else None
+IDLE_WAIT = 500 if IDLE else None
 
 
 def lim(s, l=50):
@@ -176,12 +176,12 @@ class ioloop(greenlet):
                 if event & select.POLLIN:
                     if 'recv' in self.registered[fileno]['operations']:
                         r = self.registered[fileno]['operations']['recv']
-                        r['greenlet'].switch(r['socket'].socket.recv(*r['args'], **r['kwargs']))
+                        r['greenlet'].switch()
 #                        self.do_recv(r)
 
                     elif 'accept' in self.registered[fileno]['operations']:
                         r = self.registered[fileno]['operations']['accept']
-                        r['greenlet'].switch(r['socket'].socket.accept(*r['args'], **r['kwargs']))
+                        r['greenlet'].switch()
 #                        self.do_accept(r)
 
                     else:
@@ -191,16 +191,17 @@ class ioloop(greenlet):
                 if event & select.POLLOUT:
                     if 'send' in self.registered[fileno]['operations']:
                         r = self.registered[fileno]['operations']['send']
-                        r['greenlet'].switch(r['socket'].socket.send(*r['args'], **r['kwargs']))
+                        r['greenlet'].switch()
 #                        self.do_send(r)
                     else:
                         log.warn("Received POLLOUT for unregistered fd %r, ignoring", fileno)
 
                 if event & select.POLLHUP:
                     log.debug("POLLHUP %r %r", fileno, event)
-                    for operation, r in self.registered[fileno]['operations'].iteritems():
-                        r['greenlet'].throw(__socket__.error("Connection closed"))
-                    #self.unregister(fileno, force=True)
+                    # when filenos are reused by the OS, we might receive a HUP for a fileno which was for its previous incarnation.....
+                    #for operation, r in self.registered[fileno]['operations'].iteritems():
+                    #    # this will have the side-effect of unregistering these calls due to socket._do_operation's finally clause
+                    #    r['greenlet'].throw(__socket__.error("Connection closed"))
 #            else:
 #                # no events to process, let the parent greenlet run
 #                self.parent.switch()
