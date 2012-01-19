@@ -22,8 +22,8 @@ def join(gr):
 
 def recvall(s, i):
 #    num = random.randint(0, 1) * 10240000
-    num = (9 - i) * 102400
-#    num = 1
+#    num = (9 - i) * 102400
+    num = 1
 #    num = 1024 * 1024
     log.debug("recvall %r %r", s, i)
     s.sendall("x" * num + "\n")
@@ -40,10 +40,6 @@ def recvall(s, i):
     log.info("%r %r", i, b''.join(data))
 
 def main():
-    #loggingFormat = '%(asctime)s,%(msecs)03d %(levelname)-5.5s [%(processName)s-%(thread)d-%(threadName)s] [%(name)s] %(message)s (line %(lineno)d %(funcName)s)'
-    loggingFormat = '%(asctime)s,%(msecs)03d %(levelname)-5.5s [%(name)s] %(message)s (line %(lineno)d %(funcName)s)'
-    logging.basicConfig(level=logging.INFO, format=loggingFormat, datefmt='%Y-%m-%d %H:%M:%S')
-    
     gls = []
     for i in xrange(10):
         s = socket()
@@ -59,7 +55,7 @@ def main():
 #        for i, s, gl in gls:
 #            if gl.dead:
 #                gls.remove((i, s, gl))
-#            ioloop.coreloop.switch()
+#            ioloop.coreloop().switch()
 #
 #    for i in xrange(4):
 #        s = socket()
@@ -73,7 +69,7 @@ def main():
             if gl.dead:
                 gls.remove((i, s, gl))
             if ioloop.IDLE:
-                ioloop.coreloop.switch()
+                ioloop.coreloop().switch()
     
     #for i, s, gl in gls:
     #    log.debug("%r %r", i, gl.switch(s))
@@ -104,4 +100,8 @@ def main():
     #    time.sleep(1)
 
 if __name__ == '__main__':
-     main()
+    #loggingFormat = '%(asctime)s,%(msecs)03d %(levelname)-5.5s [%(processName)s-%(thread)d-%(threadName)s] [%(name)s] %(message)s (line %(lineno)d %(funcName)s)'
+    loggingFormat = '%(asctime)s,%(msecs)03d %(levelname)-5.5s [%(name)s] %(message)s (line %(lineno)d %(funcName)s)'
+    logging.basicConfig(level=logging.DEBUG, format=loggingFormat, datefmt='%Y-%m-%d %H:%M:%S')
+    
+    main()

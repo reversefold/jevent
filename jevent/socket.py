@@ -40,7 +40,7 @@ class socket(Proxy):
     def _do_operation(self, operation, flag, args, kwargs):
         #self._check_fileno()
 #        if ioloop.IDLE:
-#            ioloop.coreloop.switch()
+#            ioloop.coreloop().switch()
 
         # loop until we get a response from the operation
         while True:
@@ -51,7 +51,7 @@ class socket(Proxy):
                 if e.errno != 35: #Resource temporarily unavailable
                     raise
                 log.debug("Asynchronous socket is not ready for %r %r %r", operation, self, e)
-                ioloop.coreloop.register(self.fileno(), flag, operation)
+                ioloop.coreloop().register(self.fileno(), flag, operation)
     
                 try:
                     ## TODO: don't really like this
@@ -63,13 +63,13 @@ class socket(Proxy):
                     #        if e.errno != 35: #Resource temporarily unavailable
                     #            raise
                     #        log.debug("Asynchronous socket is not ready for %r %r %r", operation, self, e)
-                        ret = ioloop.coreloop.switch()
+                        ret = ioloop.coreloop().switch()
                         if ioloop.IDLE and ret is ioloop.noop:
                             log.debug("noop")
                             continue
                         break
                 finally:
-                    ioloop.coreloop.unregister(self.fileno(), flag, operation)
+                    ioloop.coreloop().unregister(self.fileno(), flag, operation)
 
         log.debug(" return %r %r", lim(ret), self)
         return ret

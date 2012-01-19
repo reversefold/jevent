@@ -42,10 +42,6 @@ class connection(greenlet):
         log.info("Closed connection")
 
 def main():
-    #loggingFormat = '%(asctime)s,%(msecs)03d %(levelname)-5.5s [%(processName)s-%(thread)d-%(threadName)s] [%(name)s] %(message)s (line %(lineno)d %(funcName)s)'
-    loggingFormat = '%(asctime)s,%(msecs)03d %(levelname)-5.5s [%(name)s] %(message)s (line %(lineno)d %(funcName)s)'
-    logging.basicConfig(level=logging.INFO, format=loggingFormat, datefmt='%Y-%m-%d %H:%M:%S')
-    
     i = 0
     
     s = socket.socket(pysocket.AF_INET, pysocket.SOCK_STREAM)
@@ -53,8 +49,8 @@ def main():
     s.bind(('0.0.0.0', 4242))
     s.listen(5)
     while True:
-        if ioloop.IDLE:
-            ioloop.coreloop.switch()
+#        if ioloop.IDLE:
+#            ioloop.coreloop().switch()
         log.info("accept()")
         c, a = s.accept()
         g = connection(i, c, a)
@@ -63,4 +59,8 @@ def main():
         i += 1
 
 if __name__ == '__main__':
-     main()
+    #loggingFormat = '%(asctime)s,%(msecs)03d %(levelname)-5.5s [%(processName)s-%(thread)d-%(threadName)s] [%(name)s] %(message)s (line %(lineno)d %(funcName)s)'
+    loggingFormat = '%(asctime)s,%(msecs)03d %(levelname)-5.5s [%(name)s] %(message)s (line %(lineno)d %(funcName)s)'
+    logging.basicConfig(level=logging.INFO, format=loggingFormat, datefmt='%Y-%m-%d %H:%M:%S')
+    
+    main()

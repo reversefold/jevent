@@ -72,6 +72,10 @@ class ioloop(greenlet):
             del self.registered[fileno]
 
     def run(self):
+        if greenlet.getcurrent() != self:
+            log.warn("Don't call ioloop.run() directly, call ioloop.switch() instead")
+            self.switch()
+            return
         log.debug("ioloop.run")
 #        self._schedule_call(self.parent.switch())
         self.parent.switch()
@@ -125,5 +129,11 @@ class ioloop(greenlet):
             if IDLE:
                 self.parent.switch(noop)
 
-coreloop = ioloop()
-coreloop.switch()
+_coreloops = {}
+def coreloop():
+    import threading
+    t = threading.current_thread()
+    if t not in _coreloops:
+        _coreloops[t] = ioloop()
+        _coreloops[t].switch()
+    return _coreloops[t]
