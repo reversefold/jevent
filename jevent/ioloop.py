@@ -27,12 +27,8 @@ class ioloop(greenlet):
         self.calls_to_process = []
         self.poll = select.poll()
 
-    def register(self, record, flag, operation):
-        fileno = record['socket'].fileno()
-        log.debug("ioloop.register %r %r", fileno, flag)
-#        if fileno == -1:
-#            log.error("fileno is -1")
-#            import pdb;pdb.set_trace()
+    def register(self, fileno, flag, operation):
+        log.debug("ioloop.register %r %r %r", fileno, flag, operation)
 
         if fileno in self.registered:
             # TODO: given the way this is meant to be used could one socket really be registered for multiple operations?
@@ -40,12 +36,12 @@ class ioloop(greenlet):
                 raise JEventException("%r already registered for operation %r %r" % (fileno, operation, flag))
 
             self.registered[fileno]['flags'] |= flag
-            self.registered[fileno]['operations'][operation] = record
+            self.registered[fileno]['operations'][operation] = greenlet.getcurrent()
             self.poll.modify(fileno, self.registered[fileno]['flags'])
 
         else:
             self.registered[fileno] = {
-                'operations': { operation: record },
+                'operations': { operation: greenlet.getcurrent() },
                 'flags': flag
                 }
             self.poll.register(fileno, flag)
@@ -175,14 +171,10 @@ class ioloop(greenlet):
                 #elif event & select.POLLIN:
                 if event & select.POLLIN:
                     if 'recv' in self.registered[fileno]['operations']:
-                        r = self.registered[fileno]['operations']['recv']
-                        r['greenlet'].switch()
-#                        self.do_recv(r)
+                        self.registered[fileno]['operations']['recv'].switch()
 
                     elif 'accept' in self.registered[fileno]['operations']:
-                        r = self.registered[fileno]['operations']['accept']
-                        r['greenlet'].switch()
-#                        self.do_accept(r)
+                        self.registered[fileno]['operations']['accept'].switch()
 
                     else:
                         log.warn("Received POLLIN for unregistered fd %r, ignoring", fileno)
@@ -190,9 +182,7 @@ class ioloop(greenlet):
 
                 if event & select.POLLOUT:
                     if 'send' in self.registered[fileno]['operations']:
-                        r = self.registered[fileno]['operations']['send']
-                        r['greenlet'].switch()
-#                        self.do_send(r)
+                        self.registered[fileno]['operations']['send'].switch()
                     else:
                         log.warn("Received POLLOUT for unregistered fd %r, ignoring", fileno)
 

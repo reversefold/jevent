@@ -47,13 +47,7 @@ class socket(Proxy):
                 if e.errno != 35: #Resource temporarily unavailable
                     raise
                 log.debug("Asynchronous socket is not ready for %r %r %r", operation, self, e)
-                ioloop.coreloop.register(
-                    { 'greenlet': greenlet.getcurrent(),
-                      'socket': self,
-                      'args': args,
-                      'kwargs': kwargs },
-                    flag,
-                    operation)
+                ioloop.coreloop.register(self.fileno(), flag, operation)
     
                 try:
                     ## TODO: don't really like this
