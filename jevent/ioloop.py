@@ -134,6 +134,11 @@ def coreloop():
     import threading
     t = threading.current_thread()
     if t not in _coreloops:
-        _coreloops[t] = ioloop()
-        _coreloops[t].switch()
+        l = ioloop()
+        _coreloops[t] = l
+        top = greenlet.getcurrent()
+        while top.parent:
+            top = top.parent
+        l.parent = top
+        l.switch()
     return _coreloops[t]

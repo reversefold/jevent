@@ -51,7 +51,7 @@ def main():
     while True:
 #        if ioloop.IDLE:
 #            ioloop.coreloop().switch()
-        log.info("accept()")
+#        log.info("accept()")
         c, a = s.accept()
         g = connection(i, c, a)
         g.switch()

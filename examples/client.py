@@ -22,8 +22,8 @@ def join(gr):
 
 def recvall(s, i):
 #    num = random.randint(0, 1) * 10240000
-#    num = (9 - i) * 102400
-    num = 1
+    num = (9 - i) * 102400
+#    num = 1
 #    num = 1024 * 1024
     log.debug("recvall %r %r", s, i)
     s.sendall("x" * num + "\n")

@@ -13,7 +13,7 @@ def run_server():
     from examples import server
     server.main()
 
-def maing():
+def main_greenlets():
     from greenlet import greenlet
 
     s = greenlet(run_server)
@@ -24,11 +24,12 @@ def maing():
     log.info("Client started and switched back")
     while not s.dead:
         if c.dead:
+            log.info("Client dead, exiting")
             sys.exit(0)
         c.switch()
         s.switch()
 
-def maint():
+def main_threads():
     from threading import Thread
 
     s = Thread(target=run_server)
@@ -45,7 +46,7 @@ def maint():
 if __name__ == '__main__':
     #loggingFormat = '%(asctime)s,%(msecs)03d %(levelname)-5.5s [%(processName)s-%(thread)d-%(threadName)s] [%(name)s] %(message)s (line %(lineno)d %(funcName)s)'
     loggingFormat = '%(asctime)s,%(msecs)03d %(levelname)-5.5s [%(name)s] %(message)s (line %(lineno)d %(funcName)s)'
-    logging.basicConfig(level=logging.DEBUG, format=loggingFormat, datefmt='%Y-%m-%d %H:%M:%S')
+    logging.basicConfig(level=logging.INFO, format=loggingFormat, datefmt='%Y-%m-%d %H:%M:%S')
     
-#    maing()
-    maint()
+    main_greenlets()
+#    main_threads()
