@@ -7,7 +7,6 @@ import time
 
 log = logging.getLogger(__name__)
 
-
 import socket as pysocket
 from greenlet import greenlet
 from jevent import ioloop, socket
@@ -35,11 +34,13 @@ class connection(greenlet):
             if not d or d[-1] == "\n":
                 break
             #time.sleep(0.1)
-        self.c.sendall("Hello %r\n" % self.i)
+        self.c.sendall("x" * 1010 + "Hello %r\n" % self.i)
         log.info("Sent Hello %r" % self.i)
         self.c.shutdown(pysocket.SHUT_RDWR)
         self.c.close()
         log.info("Closed connection")
+
+go = True
 
 def main():
     i = 0
@@ -48,7 +49,7 @@ def main():
     s.setsockopt(pysocket.SOL_SOCKET, pysocket.SO_REUSEADDR, 1)
     s.bind(('0.0.0.0', 4242))
     s.listen(5)
-    while True:
+    while go:
 #        if ioloop.IDLE:
 #            ioloop.coreloop().switch()
 #        log.info("accept()")
@@ -57,10 +58,13 @@ def main():
         g.switch()
     #    g.run()
         i += 1
+    s.shutdown(pysocket.SHUT_RDWR)
+    s.close()
+    log.info("Server stopped")
 
 if __name__ == '__main__':
     #loggingFormat = '%(asctime)s,%(msecs)03d %(levelname)-5.5s [%(processName)s-%(thread)d-%(threadName)s] [%(name)s] %(message)s (line %(lineno)d %(funcName)s)'
     loggingFormat = '%(asctime)s,%(msecs)03d %(levelname)-5.5s [%(name)s] %(message)s (line %(lineno)d %(funcName)s)'
-    logging.basicConfig(level=logging.INFO, format=loggingFormat, datefmt='%Y-%m-%d %H:%M:%S')
+    logging.basicConfig(level=logging.ERROR, format=loggingFormat, datefmt='%Y-%m-%d %H:%M:%S')
     
     main()

@@ -14,7 +14,9 @@ noop = object()
 
 IDLE = True
 IDLE_WAIT = 100 if IDLE else None
+#IDLE_WAIT = 5000 if IDLE else None
 
+_go = True
 
 def lim(s, l=50):
     ss = str(s)
@@ -34,16 +36,17 @@ class ioloop(greenlet):
 
         if fileno in self.registered:
             # TODO: given the way this is meant to be used could one socket really be registered for multiple operations?
-            if operation in self.registered[fileno]['operations']:
+#            if operation in self.registered[fileno]['operations']:
+            if flag in self.registered[fileno]['operations']:
                 raise JEventException("%r already registered for operation %r %r" % (fileno, operation, flag))
 
             self.registered[fileno]['flags'] |= flag
-            self.registered[fileno]['operations'][operation] = greenlet.getcurrent()
+            self.registered[fileno]['operations'][flag] = greenlet.getcurrent()
             self.poll.modify(fileno, self.registered[fileno]['flags'])
 
         else:
             self.registered[fileno] = {
-                'operations': { operation: greenlet.getcurrent() },
+                'operations': { flag: greenlet.getcurrent() },
                 'flags': flag
                 }
             self.poll.register(fileno, flag)
@@ -64,12 +67,14 @@ class ioloop(greenlet):
             log.debug("fileno unregistered flag %r %r %r", fileno, flag, lim(r))
             self.poll.modify(fileno, r)
             self.registered[fileno]['flags'] = r
-            del self.registered[fileno]['operations'][operation]
+            if flag in self.registered[fileno]['operations']:
+                del self.registered[fileno]['operations'][flag]
 
         else:
             log.debug("fileno fully unregistered %r", fileno)
             self.poll.unregister(fileno)
-            del self.registered[fileno]
+            if fileno in self.registered:
+                del self.registered[fileno]
 
     def run(self):
         if greenlet.getcurrent() != self:
@@ -79,7 +84,7 @@ class ioloop(greenlet):
         log.debug("ioloop.run")
 #        self._schedule_call(self.parent.switch())
         self.parent.switch()
-        while True:
+        while _go:
 #            for rec in self.calls_to_process:
 #                self._process_call(rec)
 
@@ -93,28 +98,34 @@ class ioloop(greenlet):
             for fileno, event in events:
                 log.debug("event %r %r", fileno, event)
 
+                if fileno not in self.registered:
+                    log.warn("event %r received for unregistered fileno %r", event, fileno)
+                    continue
+
                 # TODO: needed? What does this mean exactly? Should no more events be processed?
                 #if event & select.POLLHUP:
                 #    log.debug("POLLHUP %r %r", fileno, event)
                 #    #self.unregister(fileno, force=True)
                 #
                 #elif event & select.POLLIN:
-                if event & select.POLLIN:
-                    if 'recv' in self.registered[fileno]['operations']:
-                        self.registered[fileno]['operations']['recv'].switch()
-
-                    elif 'accept' in self.registered[fileno]['operations']:
-                        self.registered[fileno]['operations']['accept'].switch()
-
-                    else:
-                        log.warn("Received POLLIN for unregistered fd %r, ignoring", fileno)
-                        #raise Exception("Got event %r for %r but not in to_recv and to_accept" % (event, fileno))
-
-                if event & select.POLLOUT:
-                    if 'send' in self.registered[fileno]['operations']:
-                        self.registered[fileno]['operations']['send'].switch()
-                    else:
-                        log.warn("Received POLLOUT for unregistered fd %r, ignoring", fileno)
+                #TODO: switch to a loop over the possible flags
+                
+                if fileno not in self.registered:
+                    log.warn("Received event %r for unregistered fd %r, ignoring", event, fileno)
+                    self.poll.unregister(fileno)
+                    continue
+                    
+                reg = self.registered[fileno]
+                for flag in [ select.POLLIN, select.POLLOUT ]:
+                    if flag & event:
+                        if flag not in reg['operations']:
+                            log.warn("Received flag %r for fd %r, which was not registered for that flag", flag, fileno)
+                            self.unregister(fileno, flag)
+                            continue
+                        reg['operations'][flag].switch()
+#                for flag, greenlet in reg['operations'].iteritems():
+#                    if flag & event:
+#                        greenlet.switch()
 
                 if event & select.POLLHUP:
                     log.debug("POLLHUP %r %r", fileno, event)

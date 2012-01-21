@@ -9,6 +9,8 @@ from jevent import ioloop
 
 log = logging.getLogger(__name__)
 
+from errno import EINVAL, EWOULDBLOCK, EINPROGRESS, EALREADY, EAGAIN, EISCONN
+
 from proxy import Proxy
 
 def lim(s, l=50):
@@ -24,6 +26,7 @@ class socket(Proxy):
             self.socket = __socket__.socket(*args, **kwargs)
         self._blocking = 1
         super(socket, self).__init__(target=self.socket)
+        self.socket.setblocking(0)
 
     def _check_fileno(self):
         if self.fileno() == -1:
@@ -33,22 +36,31 @@ class socket(Proxy):
     def connect(self, *args, **kwargs):
         log.debug("socket.connect %r %r", args, kwargs)
         #self._check_fileno()
-        self.socket.connect(*args, **kwargs)
-        self.socket.setblocking(0)
-        # TODO: no async here?
+        return self._do_operation('connect', select.POLLOUT, self.socket.connect, args, kwargs)
+#        while True:
+#            result = self.socket.connect_ex(*args, **kwargs)
+#            if not result or result == EISCONN:
+#                break
+#            elif (result in (EWOULDBLOCK, EINPROGRESS, EALREADY)):# or (result == EINVAL and is_windows):
+#                self._wait(self._write_event)
 
-    def _do_operation(self, operation, flag, args, kwargs):
+    def _do_operation(self, operation, flag, func, args, kwargs):
         #self._check_fileno()
 #        if ioloop.IDLE:
 #            ioloop.coreloop().switch()
 
         # loop until we get a response from the operation
-        while True:
+        while ioloop._go:
             try:
-                ret = getattr(self.socket, operation)(*args, **kwargs)
+                ret = func(*args, **kwargs)
                 break
             except __socket__.error, e:
-                if e.errno != 35: #Resource temporarily unavailable
+                if (e.errno != 35 #Resource temporarily unavailable
+                    and e.errno != 36): #Operation now in progress
+#                if e.errno != 35: #Resource temporarily unavailable
+#                    if e.errno == 36: #Operation now in progress
+#                        ret = None
+#                        break
                     raise
                 log.debug("Asynchronous socket is not ready for %r %r %r", operation, self, e)
                 ioloop.coreloop().register(self.fileno(), flag, operation)
@@ -70,22 +82,23 @@ class socket(Proxy):
                         break
                 finally:
                     ioloop.coreloop().unregister(self.fileno(), flag, operation)
+                if operation == 'connect':
+                    return
 
         log.debug(" return %r %r", lim(ret), self)
         return ret
 
     def recv(self, *args, **kwargs):
         log.debug("socket.recv %r %r %r", self.socket.fileno(), lim(args), lim(kwargs))
-        return self._do_operation('recv', select.POLLIN, args, kwargs)
+        return self._do_operation('recv', select.POLLIN, self.socket.recv, args, kwargs)
 
     def send(self, *args, **kwargs):
         log.debug("socket.send %r %r %r", self.socket.fileno(), lim(args), lim(kwargs))
-        return self._do_operation('send', select.POLLOUT, args, kwargs)
+        return self._do_operation('send', select.POLLOUT, self.socket.send, args, kwargs)
 
     def accept(self, *args, **kwargs):
         log.debug("socket.accept %r %r %r", self.socket.fileno(), args, kwargs)
-        self.socket.setblocking(0)
-        s, a = self._do_operation('accept', select.POLLIN, args, kwargs)
+        s, a = self._do_operation('accept', select.POLLIN, self.socket.accept, args, kwargs)
         return socket(socket=s), a 
 
     def sendall(self, data):
