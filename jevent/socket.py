@@ -35,20 +35,9 @@ class socket(Proxy):
 
     def connect(self, *args, **kwargs):
         log.debug("socket.connect %r %r", args, kwargs)
-        #self._check_fileno()
         return self._do_operation('connect', select.POLLOUT, self.socket.connect, args, kwargs)
-#        while True:
-#            result = self.socket.connect_ex(*args, **kwargs)
-#            if not result or result == EISCONN:
-#                break
-#            elif (result in (EWOULDBLOCK, EINPROGRESS, EALREADY)):# or (result == EINVAL and is_windows):
-#                self._wait(self._write_event)
 
     def _do_operation(self, operation, flag, func, args, kwargs):
-        #self._check_fileno()
-#        if ioloop.IDLE:
-#            ioloop.coreloop().switch()
-
         # loop until we get a response from the operation
         while ioloop._go:
             try:
@@ -57,24 +46,13 @@ class socket(Proxy):
             except __socket__.error, e:
                 if (e.errno != 35 #Resource temporarily unavailable
                     and e.errno != 36): #Operation now in progress
-#                if e.errno != 35: #Resource temporarily unavailable
-#                    if e.errno == 36: #Operation now in progress
-#                        ret = None
-#                        break
                     raise
                 log.debug("Asynchronous socket is not ready for %r %r %r", operation, self, e)
                 ioloop.coreloop().register(self.fileno(), flag, operation)
     
                 try:
-                    ## TODO: don't really like this
                     # loop until we don't get a noop (which means we should be ready for our operation)
                     while True:
-                    #    try:
-                    #        ret = getattr(self.socket, operation)(*args, **kwargs)
-                    #    except __socket__.error, e:
-                    #        if e.errno != 35: #Resource temporarily unavailable
-                    #            raise
-                    #        log.debug("Asynchronous socket is not ready for %r %r %r", operation, self, e)
                         ret = ioloop.coreloop().switch()
                         if ioloop.IDLE and ret is ioloop.noop:
                             log.debug("noop")
@@ -107,11 +85,9 @@ class socket(Proxy):
         while data:
             data = data[self.send(data):]
             log.debug("%r remaining", len(data))
-            #time.sleep(0.1)
 
     def shutdown(self, *args, **kwargs):
         log.debug("socket.shutdown %r", self.socket.fileno())
-        #self._check_fileno()
         try:
             self.socket.shutdown(*args, **kwargs)
         except __socket__.error, e:

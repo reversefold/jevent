@@ -36,7 +36,6 @@ class ioloop(greenlet):
 
         if fileno in self.registered:
             # TODO: given the way this is meant to be used could one socket really be registered for multiple operations?
-#            if operation in self.registered[fileno]['operations']:
             if flag in self.registered[fileno]['operations']:
                 raise JEventException("%r already registered for operation %r %r" % (fileno, operation, flag))
 
@@ -82,12 +81,9 @@ class ioloop(greenlet):
             self.switch()
             return
         log.debug("ioloop.run")
-#        self._schedule_call(self.parent.switch())
         self.parent.switch()
-        while _go:
-#            for rec in self.calls_to_process:
-#                self._process_call(rec)
 
+        while _go:
             if IDLE and not self.registered:
                 log.debug("nothing to poll, switching to parent")
                 self.parent.switch(noop)
@@ -102,14 +98,6 @@ class ioloop(greenlet):
                     log.warn("event %r received for unregistered fileno %r", event, fileno)
                     continue
 
-                # TODO: needed? What does this mean exactly? Should no more events be processed?
-                #if event & select.POLLHUP:
-                #    log.debug("POLLHUP %r %r", fileno, event)
-                #    #self.unregister(fileno, force=True)
-                #
-                #elif event & select.POLLIN:
-                #TODO: switch to a loop over the possible flags
-                
                 if fileno not in self.registered:
                     log.warn("Received event %r for unregistered fd %r, ignoring", event, fileno)
                     self.poll.unregister(fileno)
@@ -123,9 +111,6 @@ class ioloop(greenlet):
                             self.unregister(fileno, flag)
                             continue
                         reg['operations'][flag].switch()
-#                for flag, greenlet in reg['operations'].iteritems():
-#                    if flag & event:
-#                        greenlet.switch()
 
                 if event & select.POLLHUP:
                     log.debug("POLLHUP %r %r", fileno, event)
@@ -133,10 +118,6 @@ class ioloop(greenlet):
                     #for operation, r in self.registered[fileno]['operations'].iteritems():
                     #    # this will have the side-effect of unregistering these calls due to socket._do_operation's finally clause
                     #    r['greenlet'].throw(__socket__.error("Connection closed"))
-#            else:
-#                # no events to process, let the parent greenlet run
-#                self.parent.switch()
-#            log.info("switch() to parent from ioloop")
             if IDLE:
                 self.parent.switch(noop)
 
