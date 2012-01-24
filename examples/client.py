@@ -67,8 +67,6 @@ def main():
                 else:
                     gl.switch()
 
-        break
-
 if __name__ == '__main__':
     loggingFormat = '%(asctime)s,%(msecs)03d %(levelname)-5.5s [%(name)s] %(message)s (line %(lineno)d %(funcName)s)'
     logging.basicConfig(level=logging.ERROR, format=loggingFormat, datefmt='%Y-%m-%d %H:%M:%S')
