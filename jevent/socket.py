@@ -1,5 +1,6 @@
 # Copyright: (c) 2012 Justin Patrin <papercrane@reversefold.com>
 
+import errno
 import greenlet
 import inspect
 import logging
@@ -31,12 +32,6 @@ class socket(Proxy):
     def connect(self, *args, **kwargs):
         log.debug("socket.connect %r %r", args, kwargs)
         return self._do_operation('connect', select.POLLOUT, self.socket.connect, args, kwargs)
-#        while True:
-#            result = self.socket.connect_ex(*args, **kwargs)
-#            if not result or result == EISCONN:
-#                break
-#            elif (result in (EWOULDBLOCK, EINPROGRESS, EALREADY)):# or (result == EINVAL and is_windows):
-#                self._wait(self._write_event)
 
     def _do_operation(self, operation, flag, func, args, kwargs):
         # loop until we get a response from the operation
@@ -45,13 +40,13 @@ class socket(Proxy):
                 ret = func(*args, **kwargs)
                 break
             except __socket__.error, e:
-                if (e.errno != 11 #Resource temporarily unavailable 11 for Linux, 35 for OSX...
-                    and e.errno != 115 #Operation now in progress 115 for Linux, 36 for OSX
-                    and e.errno != 24): #Too many open files
-#                if e.errno != 35: #Resource temporarily unavailable
-#                    if e.errno == 36: #Operation now in progress
-#                        ret = None
-#                        break
+                if e.errno == errno.EISCONN: # transport endpoint is connected
+                    break
+                if (e.errno != errno.EWOULDBLOCK #Resource temporarily unavailable
+                    and e.errno != errno.EINPROGRESS #Operation now in progress
+                    and e.errno != errno.EALREADY
+#                    and e.errno != errno.EMFILE #Too many open files
+                ): #Too many open files
                     raise
                 log.debug("Asynchronous socket is not ready for %r %r %r", operation, self, e)
                 ioloop.coreloop().register(self.fileno(), flag, operation)
@@ -66,7 +61,8 @@ class socket(Proxy):
                         break
                 finally:
                     ioloop.coreloop().unregister(self.fileno(), flag, operation)
-                if operation == 'connect' and e.errno != 24:
+                if operation == 'connect':# and e.errno != errno.EMFILE:
+                    # We don't want to retry connecting, so just return now
                     return
 
         log.debug(" return %r %r", lim(ret), self)
@@ -97,7 +93,7 @@ class socket(Proxy):
         try:
             self.socket.shutdown(*args, **kwargs)
         except __socket__.error, e:
-            if not e.errno == 57:
+            if not e.errno == errno.ENOTCONN: # Not connected
                 raise
             log.debug("Silencing error due to a FIN from the other side auto-shutting-down the socket")
 
