@@ -1,6 +1,7 @@
 # Copyright: (c) 2012 Justin Patrin <papercrane@reversefold.com>
 
-from greenlet import greenlet, GreenletExit
+import greenlet
+from greenlet import GreenletExit
 import logging
 import random
 import sys
@@ -40,16 +41,25 @@ def recvall(s, i):
         s.close()
         log.info("%r %r", i, b''.join(data))
     except:
-#        log.exception("recvall exception")
+        log.exception("recvall exception")
         pass
 
 def main():
     while True:
         gls = []
         for i in xrange(1000):
-            s = socket()
-            s.connect(("127.0.0.1", 4242))
-            gl = greenlet(recvall)
+            while True:
+                try:
+                    s = socket()
+                except pysocket.error, e:
+                    if e.errno != 24:
+                        raise
+                    ioloop.coreloop().switch()
+                else:
+                    break
+            s.connect(("127.0.0.1", 2424))
+                
+            gl = greenlet.greenlet(recvall)
             gls.append((i, s, gl))
             gl.switch(s, i)
         
@@ -65,7 +75,7 @@ def main():
     #    for i in xrange(4):
     #        s = socket()
     #        s.connect(("127.0.0.1", 4242))
-    #        gl = greenlet(recvall)
+    #        gl = greenlet.greenlet(recvall)
     #        gls.append((i, s, gl))
     #        log.info("%r %r", i, gl.switch(s, i))
     

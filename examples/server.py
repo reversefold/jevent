@@ -47,7 +47,7 @@ def main():
     
     s = socket.socket(pysocket.AF_INET, pysocket.SOCK_STREAM)
     s.setsockopt(pysocket.SOL_SOCKET, pysocket.SO_REUSEADDR, 1)
-    s.bind(('0.0.0.0', 4242))
+    s.bind(('0.0.0.0', 2424))
     s.listen(5)
     while go:
 #        if ioloop.IDLE:

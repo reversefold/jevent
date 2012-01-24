@@ -6,11 +6,11 @@ log = logging.getLogger(__name__)
 
 
 def run_client():
-    from examples import client
+    from examples import gclient as client
     client.main()
 
 def run_server():
-    from examples import server
+    from examples import gserver as server
     server.main()
 
 def main_greenlets():
@@ -50,7 +50,7 @@ def main_threads():
 #        if tobj is s:
 #            break
 #    ctypes.pythonapi.PyThreadState_SetAsyncExc(tid, ctypes.pyobject(Exception))
-    from examples import server
+    from examples import gserver as server
     from jevent import ioloop
     ioloop._go = False
     s.go = False
@@ -62,5 +62,5 @@ if __name__ == '__main__':
     loggingFormat = '%(asctime)s,%(msecs)03d %(levelname)-5.5s [%(name)s] %(message)s (line %(lineno)d %(funcName)s)'
     logging.basicConfig(level=logging.ERROR, format=loggingFormat, datefmt='%Y-%m-%d %H:%M:%S')
     
-    main_greenlets()
-#    main_threads()
+#    main_greenlets()
+    main_threads()

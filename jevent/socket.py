@@ -55,8 +55,9 @@ class socket(Proxy):
                 ret = func(*args, **kwargs)
                 break
             except __socket__.error, e:
-                if (e.errno != 35 #Resource temporarily unavailable
-                    and e.errno != 36): #Operation now in progress
+                if (e.errno != 11 #Resource temporarily unavailable 11 for Linux, 35 for OSX...
+                    and e.errno != 115 #Operation now in progress 115 for Linux, 36 for OSX
+                    and e.errno != 24): #Too many open files
 #                if e.errno != 35: #Resource temporarily unavailable
 #                    if e.errno == 36: #Operation now in progress
 #                        ret = None
@@ -82,7 +83,7 @@ class socket(Proxy):
                         break
                 finally:
                     ioloop.coreloop().unregister(self.fileno(), flag, operation)
-                if operation == 'connect':
+                if operation == 'connect' and e.errno != 24:
                     return
 
         log.debug(" return %r %r", lim(ret), self)
