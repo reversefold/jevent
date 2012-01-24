@@ -22,13 +22,21 @@ def main_greenlets():
     log.info("Server started and switched back")
     c.switch()
     log.info("Client started and switched back")
-    while not s.dead:
-        if c.dead:
-            log.info("Client dead, exiting")
-            s.throw(GreenletExit())
-            break
+    while not c.dead:
         c.switch()
         s.switch()
+    log.info("Client dead, exiting")
+    from jevent import ioloop
+    from examples import server
+    ioloop._go = False
+    server.go = False
+    while not s.dead:
+        try:
+            s.switch()
+        except:
+            pass
+    ioloop._go = True
+    server.go = True
 
 def main_threads():
     import threading
@@ -53,14 +61,19 @@ def main_threads():
     from examples import server
     from jevent import ioloop
     ioloop._go = False
-    s.go = False
+    server.go = False
     s.join()
     log.info("Server done")
+    ioloop._go = True
+    server.go = True
 
 if __name__ == '__main__':
     #loggingFormat = '%(asctime)s,%(msecs)03d %(levelname)-5.5s [%(processName)s-%(thread)d-%(threadName)s] [%(name)s] %(message)s (line %(lineno)d %(funcName)s)'
     loggingFormat = '%(asctime)s,%(msecs)03d %(levelname)-5.5s [%(name)s] %(message)s (line %(lineno)d %(funcName)s)'
-    logging.basicConfig(level=logging.ERROR, format=loggingFormat, datefmt='%Y-%m-%d %H:%M:%S')
+    logging.basicConfig(level=logging.INFO, format=loggingFormat, datefmt='%Y-%m-%d %H:%M:%S')
     
+    log.info("Running in greenlets")
     main_greenlets()
-#    main_threads()
+    time.sleep(1)
+    log.info("Running in threads")
+    main_threads()

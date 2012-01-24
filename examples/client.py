@@ -39,9 +39,9 @@ def recvall(s, i):
             data.append(n)
         s.shutdown(pysocket.SHUT_RDWR)
         s.close()
-        log.info("%r %r", i, b''.join(data))
+        log.debug("%r %r", i, b''.join(data))
     except:
-        log.exception("recvall exception")
+#        log.exception("recvall exception")
         pass
 
 def main():

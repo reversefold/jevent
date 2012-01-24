@@ -39,9 +39,10 @@ class socket(Proxy):
             try:
                 ret = func(*args, **kwargs)
                 break
+
             except __socket__.error, e:
-                if e.errno == errno.EISCONN: # transport endpoint is connected
-                    break
+                if operation == 'connect' and e.errno == errno.EISCONN: # transport endpoint is connected
+                    return
                 if (e.errno != errno.EWOULDBLOCK #Resource temporarily unavailable
                     and e.errno != errno.EINPROGRESS #Operation now in progress
                     and e.errno != errno.EALREADY
@@ -78,7 +79,11 @@ class socket(Proxy):
 
     def accept(self, *args, **kwargs):
         log.debug("socket.accept %r %r %r", self.socket.fileno(), args, kwargs)
-        s, a = self._do_operation('accept', select.POLLIN, self.socket.accept, args, kwargs)
+        ret = self._do_operation('accept', select.POLLIN, self.socket.accept, args, kwargs)
+        try:
+            s, a = ret
+        except TypeError, e:
+            raise __socket__.error("Accept failed")
         return socket(socket=s), a 
 
     def sendall(self, data):

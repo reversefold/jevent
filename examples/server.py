@@ -39,15 +39,19 @@ def main():
     s = socket.socket(pysocket.AF_INET, pysocket.SOCK_STREAM)
     s.setsockopt(pysocket.SOL_SOCKET, pysocket.SO_REUSEADDR, 1)
     s.bind(('0.0.0.0', 2424))
-    s.listen(5)
-    while go:
-        c, a = s.accept()
-        g = connection(i, c, a)
-        g.switch()
-    #    g.run()
-        i += 1
-    s.shutdown(pysocket.SHUT_RDWR)
-    s.close()
+    try:
+        s.listen(5)
+        while go:
+            try:
+                c, a = s.accept()
+                g = connection(i, c, a)
+                g.switch()
+                i += 1
+            except:
+                pass
+    finally:
+        s.shutdown(pysocket.SHUT_RDWR)
+        s.close()
     log.info("Server stopped")
 
 if __name__ == '__main__':
