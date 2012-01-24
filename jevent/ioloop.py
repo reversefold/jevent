@@ -115,9 +115,9 @@ class ioloop(greenlet):
                 if event & select.POLLHUP:
                     log.debug("POLLHUP %r %r", fileno, event)
                     # when filenos are reused by the OS, we might receive a HUP for a fileno which was for its previous incarnation.....
-                    #for operation, r in self.registered[fileno]['operations'].iteritems():
+                    #for operation, g in self.registered[fileno]['operations'].iteritems():
                     #    # this will have the side-effect of unregistering these calls due to socket._do_operation's finally clause
-                    #    r['greenlet'].throw(__socket__.error("Connection closed"))
+                    #    g.throw(__socket__.error("Connection closed"))
             if IDLE:
                 self.parent.switch(noop)
 

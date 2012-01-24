@@ -1,5 +1,6 @@
 # Copyright: (c) 2012 Justin Patrin <papercrane@reversefold.com>
 
+import errno
 import greenlet
 import inspect
 import logging
@@ -28,11 +29,6 @@ class socket(Proxy):
         super(socket, self).__init__(target=self.socket)
         self.socket.setblocking(0)
 
-    def _check_fileno(self):
-        if self.fileno() == -1:
-            log.error("fileno is -1")
-            import pdb;pdb.set_trace()
-
     def connect(self, *args, **kwargs):
         log.debug("socket.connect %r %r", args, kwargs)
         return self._do_operation('connect', select.POLLOUT, self.socket.connect, args, kwargs)
@@ -43,9 +39,15 @@ class socket(Proxy):
             try:
                 ret = func(*args, **kwargs)
                 break
+
             except __socket__.error, e:
-                if (e.errno != 35 #Resource temporarily unavailable
-                    and e.errno != 36): #Operation now in progress
+                if e.errno == errno.EISCONN: # transport endpoint is connected
+                    break
+                if (e.errno != errno.EWOULDBLOCK #Resource temporarily unavailable
+                    and e.errno != errno.EINPROGRESS #Operation now in progress
+                    and e.errno != errno.EALREADY
+#                    and e.errno != errno.EMFILE #Too many open files
+                ): #Too many open files
                     raise
                 log.debug("Asynchronous socket is not ready for %r %r %r", operation, self, e)
                 ioloop.coreloop().register(self.fileno(), flag, operation)
@@ -60,7 +62,8 @@ class socket(Proxy):
                         break
                 finally:
                     ioloop.coreloop().unregister(self.fileno(), flag, operation)
-                if operation == 'connect':
+                if operation == 'connect':# and e.errno != errno.EMFILE:
+                    # We don't want to retry connecting, so just return now
                     return
 
         log.debug(" return %r %r", lim(ret), self)
@@ -91,7 +94,7 @@ class socket(Proxy):
         try:
             self.socket.shutdown(*args, **kwargs)
         except __socket__.error, e:
-            if not e.errno == 57:
+            if not e.errno == errno.ENOTCONN: # Not connected
                 raise
             log.debug("Silencing error due to a FIN from the other side auto-shutting-down the socket")
 

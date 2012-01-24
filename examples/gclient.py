@@ -8,22 +8,18 @@ import sys
 import socket as pysocket
 import time
 
-from jevent import ioloop
-from jevent.socket import socket
+#from jevent import ioloop
+#from jevent.socket import socket
+from gevent.socket import socket
 
 log = logging.getLogger(__name__)
 
-def join(gr):
-    ret = None
-    while not gr.dead:
-        ret = gr.switch()
-        if isinstance(ret, GreenletExit):
-            break
-    return ret
-
 def recvall(s, i):
     try:
+    #    num = random.randint(0, 1) * 10240000
+    #    num = (9 - i) * 102400
         num = 1023
+    #    num = 1024 * 1024
         log.debug("recvall %r %r", s, i)
         s.sendall("x" * num + "\n")
         data = []
@@ -51,7 +47,6 @@ def main():
                 except pysocket.error, e:
                     if e.errno != 24:
                         raise
-                    ioloop.coreloop().switch()
                 else:
                     break
             s.connect(("127.0.0.1", 2424))
@@ -59,14 +54,13 @@ def main():
             gl = greenlet.greenlet(recvall)
             gls.append((i, s, gl))
             gl.switch(s, i)
-        
+    
         while gls:
             for i, s, gl in gls:
                 if gl.dead:
                     gls.remove((i, s, gl))
                 else:
                     gl.switch()
-
         break
 
 if __name__ == '__main__':
