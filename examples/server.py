@@ -20,15 +20,6 @@ class connection(greenlet):
 
     def run(self):
         log.info("Accepted connection from %r", self.a)
-#        self.c.setblocking(0)
-#        try:
-#            self.c.recv(1024)
-#        except:
-#            log.error(sys.exc_info())
-#        self.c.setblocking(1)
-    #    c.recv(1)
-    #    time.sleep(10)
-    #    time.sleep(random.randint(0, 10))
         while True:
             d = self.c.recv(1024)
             if not d or d[-1] == "\n":
@@ -50,9 +41,6 @@ def main():
     s.bind(('0.0.0.0', 2424))
     s.listen(5)
     while go:
-#        if ioloop.IDLE:
-#            ioloop.coreloop().switch()
-#        log.info("accept()")
         c, a = s.accept()
         g = connection(i, c, a)
         g.switch()

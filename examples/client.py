@@ -63,58 +63,13 @@ def main():
             gls.append((i, s, gl))
             gl.switch(s, i)
         
-    #    for i in xrange(10):
-    #        log.info("%r %r", i, gls[i][2].switch(gls[i][1], i))
-        
-    #    while gls:
-    #        for i, s, gl in gls:
-    #            if gl.dead:
-    #                gls.remove((i, s, gl))
-    #            ioloop.coreloop().switch()
-    #
-    #    for i in xrange(4):
-    #        s = socket()
-    #        s.connect(("127.0.0.1", 4242))
-    #        gl = greenlet.greenlet(recvall)
-    #        gls.append((i, s, gl))
-    #        log.info("%r %r", i, gl.switch(s, i))
-    
         while gls:
             for i, s, gl in gls:
                 if gl.dead:
                     gls.remove((i, s, gl))
                 else:
                     gl.switch()
-    #            if ioloop.IDLE:
-    #                ioloop.coreloop().switch()
-        
-        #for i, s, gl in gls:
-        #    log.debug("%r %r", i, gl.switch(s))
-        
-        #import time
-        #s = pysocket.socket()
-        #s.connect(('127.0.0.1', 4242))
-        #s.setblocking(0)
-        #while True:
-        #    try:
-        #        print s.recv(1024)
-        #    except Exception, e:
-        #        import pdb; pdb.set_trace()
-        #        log.exception('')
-        #    time.sleep(1)
-        
-        #d = "x" * 40960000
-        #import time
-        #s = pysocket.socket()
-        #s.connect(('127.0.0.1', 4242))
-        #s.setblocking(0)
-        #while True:
-        #    try:
-        #        print s.send(d)
-        #    except Exception, e:
-        #        log.exception('')
-        #        import pdb; pdb.set_trace()
-        #    time.sleep(1)
+
         break
 
 if __name__ == '__main__':
