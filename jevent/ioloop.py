@@ -30,14 +30,21 @@ class ioloop(greenlet):
         self.registered = {}
         self.calls_to_process = []
         self.poll = select.poll()
+        self.listeners = {}
 
-    def register(self, fileno, flag, operation):
-        log.debug("ioloop.register %r %r %r", fileno, flag, operation)
+    def register_listener(self):
+        self.listeners[greenlet.getcurrent()] = 1
+
+    def unregister_listener(self):
+        del self.listeners[greenlet.getcurrent()]
+
+    def register(self, fileno, flag):
+        log.debug("ioloop.register %r %r", fileno, flag)
 
         if fileno in self.registered:
             # TODO: given the way this is meant to be used could one socket really be registered for multiple operations?
             if flag in self.registered[fileno]['operations']:
-                raise JEventException("%r already registered for operation %r %r" % (fileno, operation, flag))
+                raise JEventException("%r already registered for operation %r" % (fileno, flag))
 
             self.registered[fileno]['flags'] |= flag
             self.registered[fileno]['operations'][flag] = greenlet.getcurrent()
@@ -50,7 +57,7 @@ class ioloop(greenlet):
                 }
             self.poll.register(fileno, flag)
 
-    def unregister(self, fileno, flag=None, operation=None, force=False):
+    def unregister(self, fileno, flag=None, force=False):
         log.debug("ioloop.unregister %r %r", fileno, flag)
         if fileno not in self.registered:
             log.warn("fileno not registered previously %r %r", fileno, flag)
@@ -84,40 +91,44 @@ class ioloop(greenlet):
         self.parent.switch()
         while _go:
 
-            if IDLE and not self.registered:
-                log.debug("nothing to poll, switching to parent")
-                self.parent.switch(noop)
-                continue
+#            if IDLE and not self.registered:
+#                log.debug("nothing to poll, switching to parent")
+#                self.parent.switch(noop)
+#                continue
 
-            log.debug("polling")
-            events = self.poll.poll(IDLE_WAIT)
-            for fileno, event in events:
-                log.debug("event %r %r", fileno, event)
+            if self.registered:
+                idled = False
+                log.debug("polling")
+                events = self.poll.poll(IDLE_WAIT)
+                for fileno, event in events:
+                    log.debug("event %r %r", fileno, event)
 
-                if fileno not in self.registered:
-                    log.warn("event %r received for unregistered fileno %r", event, fileno)
-                    continue
-                
-                if fileno not in self.registered:
-                    log.warn("Received event %r for unregistered fd %r, ignoring", event, fileno)
-                    self.poll.unregister(fileno)
-                    continue
-                    
-                reg = self.registered[fileno]
-                for flag in [ select.POLLIN, select.POLLOUT ]:
-                    if flag & event:
-                        if flag not in reg['operations']:
-                            log.warn("Received flag %r for fd %r, which was not registered for that flag", flag, fileno)
-                            self.unregister(fileno, flag)
-                            continue
-                        reg['operations'][flag].switch()
+                    if fileno not in self.registered:
+                        log.warn("event %r received for unregistered fileno %r", event, fileno)
+#                        self.poll.unregister(fileno)
+                        continue
 
-                if event & select.POLLHUP:
-                    log.debug("POLLHUP %r %r", fileno, event)
-                    # when filenos are reused by the OS, we might receive a HUP for a fileno which was for its previous incarnation.....
-                    #for operation, g in self.registered[fileno]['operations'].iteritems():
-                    #    # this will have the side-effect of unregistering these calls due to socket._do_operation's finally clause
-                    #    g.throw(__socket__.error("Connection closed"))
+                    reg = self.registered[fileno]
+                    for flag in [ select.POLLIN, select.POLLOUT ]:
+                        if flag & event:
+                            if flag not in reg['operations']:
+                                log.warn("Received flag %r for fd %r, which was not registered for that flag", flag, fileno)
+                                self.unregister(fileno, flag)
+                                continue
+                            reg['operations'][flag].switch()
+
+                    if event & select.POLLHUP:
+                        log.debug("POLLHUP %r %r", fileno, event)
+                        # when filenos are reused by the OS, we might receive a HUP for a fileno which was for its previous incarnation.....
+                        #for operation, g in self.registered[fileno]['operations'].iteritems():
+                        #    # this will have the side-effect of unregistering these calls due to socket._do_operation's finally clause
+                        #    g.throw(__socket__.error("Connection closed"))
+            else:
+                idled = True
+
+            for listener in self.listeners.keys():
+                listener.switch(idled)
+
             if IDLE:
                 self.parent.switch(noop)
 

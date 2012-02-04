@@ -50,7 +50,7 @@ class socket(Proxy):
                 ): #Too many open files
                     raise
                 log.debug("Asynchronous socket is not ready for %r %r %r", operation, self, e)
-                ioloop.coreloop().register(self.fileno(), flag, operation)
+                ioloop.coreloop().register(self.fileno(), flag)
     
                 try:
                     # loop until we don't get a noop (which means we should be ready for our operation)
@@ -61,7 +61,7 @@ class socket(Proxy):
                             continue
                         break
                 finally:
-                    ioloop.coreloop().unregister(self.fileno(), flag, operation)
+                    ioloop.coreloop().unregister(self.fileno(), flag)
                 if operation == 'connect':# and e.errno != errno.EMFILE:
                     # We don't want to retry connecting, so just return now
                     return

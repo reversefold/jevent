@@ -1,20 +1,26 @@
+from greenlet import greenlet
 import logging
 import sys
-import time
+import time as __time__
+from jevent import time
 
 log = logging.getLogger(__name__)
 
+start = __time__.time()
 
 def run_client():
-    from examples import client
-    client.main(num=100)
+    greenlet.getcurrent().parent.switch()
+    for i in xrange(10):
+        log.info("client: %s" % ((__time__.time() - start),))
+        time.sleep(2)
 
 def run_server():
-    from examples import server
-    server.main()
+    greenlet.getcurrent().parent.switch()
+    for i in xrange(10):
+        log.info("server: %s" % ((__time__.time() - start),))
+        time.sleep(3)
 
 def main_greenlets():
-    from greenlet import greenlet, GreenletExit
 
     s = greenlet(run_server)
     c = greenlet(run_client)
@@ -38,42 +44,9 @@ def main_greenlets():
     ioloop._go = True
     server.go = True
 
-def main_threads():
-    import threading
-
-    s = threading.Thread(target=run_server)
-    c = threading.Thread(target=run_client)
-    s.start()
-    log.info("Server started")
-#    time.sleep(1)
-    c.start()
-    log.info("Client started")
-    c.join()
-    log.info("Client done")
-#    import time
-#    time.sleep(1)
-#    log.info("Sleep done")
-#    import ctypes
-#    for tid, tobj in threading._active.items():
-#        if tobj is s:
-#            break
-#    ctypes.pythonapi.PyThreadState_SetAsyncExc(tid, ctypes.pyobject(Exception))
-    from examples import server
-    from jevent import ioloop
-    ioloop._go = False
-    server.go = False
-    s.join()
-    log.info("Server done")
-    ioloop._go = True
-    server.go = True
-
 if __name__ == '__main__':
     #loggingFormat = '%(asctime)s,%(msecs)03d %(levelname)-5.5s [%(processName)s-%(thread)d-%(threadName)s] [%(name)s] %(message)s (line %(lineno)d %(funcName)s)'
     loggingFormat = '%(asctime)s,%(msecs)03d %(levelname)-5.5s [%(name)s] %(message)s (line %(lineno)d %(funcName)s)'
     logging.basicConfig(level=logging.INFO, format=loggingFormat, datefmt='%Y-%m-%d %H:%M:%S')
     
-    log.info("Running in greenlets")
     main_greenlets()
-    time.sleep(1)
-    log.info("Running in threads")
-    main_threads()

@@ -39,15 +39,15 @@ def recvall(s, i):
             data.append(n)
         s.shutdown(pysocket.SHUT_RDWR)
         s.close()
-        log.debug("%r %r", i, b''.join(data))
+        log.info("Received %r %r", i, b''.join(data))
     except:
 #        log.exception("recvall exception")
         pass
 
-def main():
+def main(num=1000, forever=False):
     while True:
         gls = []
-        for i in xrange(1000):
+        for i in xrange(num):
             while True:
                 try:
                     s = socket()
@@ -70,7 +70,8 @@ def main():
                 else:
                     gl.switch()
 
-        break
+        if not forever:
+            break
 
 if __name__ == '__main__':
     #loggingFormat = '%(asctime)s,%(msecs)03d %(levelname)-5.5s [%(processName)s-%(thread)d-%(threadName)s] [%(name)s] %(message)s (line %(lineno)d %(funcName)s)'
