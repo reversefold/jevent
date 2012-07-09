@@ -4,7 +4,6 @@ import logging
 from greenlet import greenlet
 import select
 __socket__ = __import__('socket')
-import sys
 
 from jevent import JEventException
 
@@ -62,7 +61,7 @@ class ioloop(greenlet):
         if fileno not in self.registered:
             log.warn("fileno not registered previously %r %r", fileno, flag)
             return
-        
+
         r = self.registered[fileno]['flags']
         if force:
             r = 0
